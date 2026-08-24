@@ -2,8 +2,6 @@
 
 Flexible config management for Rust CLIs — your path, your format.
 
----
-
 ## Why dotcfg?
 
 Most config crates either lock you into a fixed directory strategy or only handle reading. `dotcfg` gives you full control:
@@ -12,8 +10,6 @@ Most config crates either lock you into a fixed directory strategy or only handl
 - TOML or JSON — feature-gated, include only what you need
 - Load the whole config or get/set individual keys without touching the rest
 - Returns `None` if config doesn't exist — no magic, no forced defaults unless you want them
-
----
 
 ## Installation
 
@@ -27,8 +23,6 @@ dotcfg = { version = "0.1", default-features = false, features = ["json"] }
 # Both
 dotcfg = { version = "0.1", features = ["json"] }
 ```
-
----
 
 ## Quick Start
 
@@ -60,8 +54,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
----
-
 ## Directory Strategy
 
 ```rust
@@ -74,8 +66,6 @@ let cfg = DotCfg::new("mytool").xdg();
 // explicit dot (same as default)
 let cfg = DotCfg::new("mytool").dot();
 ```
-
----
 
 ## Format
 
@@ -91,8 +81,6 @@ let cfg = DotCfg::new("mytool").json().filename("settings");
 // → ~/.mytool/settings.json  (or ~/.config/... with .xdg())
 ```
 
----
-
 ## Loading
 
 ```rust
@@ -105,8 +93,6 @@ let config: Config = cfg.load_or_error()?;
 // Creates the file with Default values if it doesn't exist — opt-in
 let config: Config = cfg.load_or_default()?;
 ```
-
----
 
 ## Per-key Get & Set
 
@@ -126,8 +112,6 @@ cfg.set("user.username", "tayo")?;
 
 `set` creates the file/dir if missing and preserves all other keys. Values are stored as strings.
 
----
-
 ## Other Utilities
 
 ```rust
@@ -138,16 +122,12 @@ cfg.delete_file()?; // delete file, keep dir
 cfg.delete_dir()?;  // delete entire dir
 ```
 
----
-
 ## Features
 
 | Feature | Default | Description |
 |---------|---------|-------------|
 | `toml` | ✅ | TOML format support |
 | `json` | ❌ | JSON format support |
-
----
 
 ## License
 
