@@ -51,6 +51,9 @@ use std::{fs, path::PathBuf};
 use error::DotCfgError;
 use serde::{Deserialize, Serialize};
 
+#[cfg(not(any(feature = "toml", feature = "json")))]
+compile_error!("dotcfg requires at least one of the `toml` or `json` features to be enabled");
+
 /// Where the config folder lives
 pub enum DirStrategy {
     /// `~/.toolname/` — like `.cargo`, `.ssh`, `.git`
