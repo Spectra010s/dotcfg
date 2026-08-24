@@ -81,7 +81,8 @@ pub enum Format {
 /// // ~/.config/mytool/config.toml
 /// let cfg = DotCfg::new("mytool").xdg();
 ///
-/// // ~/.mytool/settings.json
+/// // ~/.mytool/settings.json (requires `json` feature)
+/// #[cfg(feature = "json")]
 /// let cfg = DotCfg::new("mytool").json().filename("settings");
 /// ```
 pub struct DotCfg {
@@ -480,6 +481,57 @@ fn json_val_to_string(value: &serde_json::Value) -> String {
         serde_json::Value::Array(_) | serde_json::Value::Object(_) => {
             serde_json::to_string(value).unwrap_or_default()
         }
+    }
+}
+
+// Unit tests for private helpers
+#[cfg(test)]
+mod unit_tests {
+    use super::*;
+
+    #[cfg(feature = "toml")]
+    #[test]
+    fn toml_val_to_string_variants() {
+        // String passthrough, numbers/bool stringified
+        assert_eq!(toml_val_to_string(&toml::Value::String("hi".into())), "hi");
+        assert_eq!(toml_val_to_string(&toml::Value::Integer(42)), "42");
+        assert_eq!(toml_val_to_string(&toml::Value::Boolean(true)), "true");
+    }
+
+    #[cfg(feature = "toml")]
+    #[test]
+    fn get_set_toml_helper() {
+        // Directly test private helpers without touching filesystem
+        let mut val = toml::Value::Table(toml::map::Map::new());
+        set_toml_value(&mut val, "username", "tayo").unwrap();
+        assert_eq!(get_toml_value(&val, "username").unwrap(), "tayo");
+        set_toml_value(&mut val, "user.username", "jane").unwrap();
+        assert_eq!(get_toml_value(&val, "user.username").unwrap(), "jane");
+        assert!(get_toml_value(&val, "missing").is_err());
+    }
+
+    #[cfg(feature = "json")]
+    #[test]
+    fn json_val_to_string_variants() {
+        assert_eq!(
+            json_val_to_string(&serde_json::Value::String("hi".into())),
+            "hi"
+        );
+        assert_eq!(
+            json_val_to_string(&serde_json::Value::Number(42.into())),
+            "42"
+        );
+        assert_eq!(json_val_to_string(&serde_json::Value::Bool(false)), "false");
+    }
+
+    #[cfg(feature = "json")]
+    #[test]
+    fn get_set_json_helper() {
+        let mut val = serde_json::Value::Object(serde_json::Map::new());
+        set_json_value(&mut val, "username", "tayo").unwrap();
+        assert_eq!(get_json_value(&val, "username").unwrap(), "tayo");
+        set_json_value(&mut val, "user.username", "jane").unwrap();
+        assert_eq!(get_json_value(&val, "user.username").unwrap(), "jane");
     }
 }
 
