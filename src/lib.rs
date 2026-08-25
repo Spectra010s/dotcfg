@@ -191,7 +191,7 @@ impl DotCfg {
     /// Load the config file.
     ///
     /// Returns `None` if the file doesn't exist — no auto-create.
-    /// Use [`load_or_default`] if you want auto-create behavior.
+    /// Use [`Self::load_or_default`] if you want auto-create behavior.
     pub fn load<T>(&self) -> Result<Option<T>, DotCfgError>
     where
         T: for<'de> Deserialize<'de>,
