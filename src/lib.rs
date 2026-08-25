@@ -140,7 +140,6 @@ impl DotCfg {
     }
 
     /// Returns the config directory path
-
     pub fn dir(&self) -> Result<PathBuf, DotCfgError> {
         let dir = match self.strategy {
             DirStrategy::Dot => {
