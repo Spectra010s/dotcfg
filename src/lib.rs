@@ -535,5 +535,3 @@ mod unit_tests {
         assert_eq!(get_json_value(&val, "user.username").unwrap(), "jane");
     }
 }
-
-

@@ -1,7 +1,7 @@
 //! Integration tests for dotcfg — derived from manual `../cfgdot` testing.
 //! Each test uses a unique `dotcfg_test_*` app name and cleans up via `delete_dir()`.
 
-use dotcfg::{error::DotCfgError, DotCfg};
+use dotcfg::{DotCfg, error::DotCfgError};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Default)]
@@ -143,7 +143,12 @@ fn dir_and_file_path() {
 fn filename_custom() {
     let cfg = unique_cfg("filename").filename("settings");
     let file = cfg.file_path().unwrap();
-    assert!(file.file_name().unwrap().to_string_lossy().starts_with("settings"));
+    assert!(
+        file.file_name()
+            .unwrap()
+            .to_string_lossy()
+            .starts_with("settings")
+    );
     cfg.save(&TestConfig::default()).unwrap();
     assert!(cfg.exists().unwrap());
     cfg.delete_dir().unwrap();
