@@ -8,7 +8,10 @@ keywords = ["config", "configuration", "cli", "toml", "json"]
 authors = ["Adeloye Adetayo <spectra010s@gmail.com>"]
 repository = "https://github.com/Spectra010s/dotcfg"
 homepage = "https://github.com/Spectra010s/dotcfg"
+documentation = "https://docs.rs/dotcfg"
+readme = "README.md"
 categories = ["config"]
+rust-version = "1.85"
 
 [features]
 default = ["toml"]
@@ -22,3 +25,7 @@ serde_json = { version = "1", optional = true }
 home = "0.5"
 etcetera = "0.8"
 thiserror = "2"
+
+[[example]]
+name = "basic"
+path = "examples/basic.rs"
