@@ -492,7 +492,7 @@ mod unit_tests {
     #[cfg(feature = "toml")]
     #[test]
     fn toml_val_to_string_variants() {
-        // String passthrough, numbers/bool stringified
+        // `get()` returns String for all types, so non-strings are stringified
         assert_eq!(toml_val_to_string(&toml::Value::String("hi".into())), "hi");
         assert_eq!(toml_val_to_string(&toml::Value::Integer(42)), "42");
         assert_eq!(toml_val_to_string(&toml::Value::Boolean(true)), "true");
@@ -501,7 +501,8 @@ mod unit_tests {
     #[cfg(feature = "toml")]
     #[test]
     fn get_set_toml_helper() {
-        // Directly test private helpers without touching filesystem
+        // Helpers are tested in-memory to avoid creating temp files
+        // and to keep tests fast and isolated from the filesystem.
         let mut val = toml::Value::Table(toml::map::Map::new());
         set_toml_value(&mut val, "username", "tayo").unwrap();
         assert_eq!(get_toml_value(&val, "username").unwrap(), "tayo");
