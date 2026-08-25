@@ -1,6 +1,6 @@
 # dotcfg
 
-Flexible config management for Rust CLIs — your path, your format.
+Flexible config management for Rust apps.
 
 ## Why dotcfg?
 

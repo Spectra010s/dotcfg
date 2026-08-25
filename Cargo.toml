@@ -2,7 +2,7 @@
 name = "dotcfg"
 version = "0.1.0"
 edition = "2024"
-description = "Flexible config management for Rust CLIs — your path, your format"
+description = "Flexible config management for Rust apps"
 license = "MIT OR Apache-2.0"
 keywords = ["config", "configuration", "cli", "toml", "json"]
 authors = ["Adeloye Adetayo <spectra010s@gmail.com>"]
