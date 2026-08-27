@@ -3,7 +3,7 @@
 //! Flexible config management for Rust apps.
 //!
 //! - Choose between `~/.toolname/` or `~/.config/toolname/`
-//! - TOML or JSON format (feature-gated)
+//! - TOML, JSON or YAML format (feature-gated)
 //! - Load, save, get, set — full or per-key
 //! - Flat (`username`) and nested (`user.username`) key support
 //! - Returns `None` if config doesn't exist — no magic auto-create unless you want it
@@ -12,6 +12,7 @@
 //!
 //! - `toml` (default) — enables TOML support
 //! - `json` — enables JSON support
+//! - `yaml` — enables YAML support
 //!
 //! ## Example
 //!
@@ -51,8 +52,10 @@ use std::{fs, path::PathBuf};
 use error::DotCfgError;
 use serde::{Deserialize, Serialize};
 
-#[cfg(not(any(feature = "toml", feature = "json")))]
-compile_error!("dotcfg requires at least one of the `toml` or `json` features to be enabled");
+#[cfg(not(any(feature = "toml", feature = "json", feature = "yaml")))]
+compile_error!(
+    "dotcfg requires at least one of the `toml`, `json` or `yaml` features to be enabled"
+);
 
 /// Where the config folder lives
 pub enum DirStrategy {
@@ -68,6 +71,8 @@ pub enum Format {
     Toml,
     #[cfg(feature = "json")]
     Json,
+    #[cfg(feature = "yaml")]
+    Yaml,
 }
 
 /// The main dotcfg handle. Create one per app.
@@ -84,6 +89,10 @@ pub enum Format {
 /// // ~/.mytool/settings.json (requires `json` feature)
 /// #[cfg(feature = "json")]
 /// let cfg = DotCfg::new("mytool").json().filename("settings");
+///
+/// // ~/.mytool/config.yaml (requires `yaml` feature)
+/// #[cfg(feature = "yaml")]
+/// let cfg = DotCfg::new("mytool").yaml();
 /// ```
 pub struct DotCfg {
     app_name: String,
@@ -103,6 +112,8 @@ impl DotCfg {
             format: Format::Toml,
             #[cfg(all(feature = "json", not(feature = "toml")))]
             format: Format::Json,
+            #[cfg(all(feature = "yaml", not(feature = "toml"), not(feature = "json")))]
+            format: Format::Yaml,
             filename: "config".to_string(),
         }
     }
@@ -123,6 +134,13 @@ impl DotCfg {
     #[cfg(feature = "json")]
     pub fn json(mut self) -> Self {
         self.format = Format::Json;
+        self
+    }
+
+    /// Use YAML format
+    #[cfg(feature = "yaml")]
+    pub fn yaml(mut self) -> Self {
+        self.format = Format::Yaml;
         self
     }
 
@@ -169,6 +187,8 @@ impl DotCfg {
             Format::Toml => "toml",
             #[cfg(feature = "json")]
             Format::Json => "json",
+            #[cfg(feature = "yaml")]
+            Format::Yaml => "yaml",
         };
         Ok(self.dir()?.join(format!("{}.{}", self.filename, ext)))
     }
@@ -208,6 +228,8 @@ impl DotCfg {
             Format::Toml => toml::from_str(&content)?,
             #[cfg(feature = "json")]
             Format::Json => serde_json::from_str(&content)?,
+            #[cfg(feature = "yaml")]
+            Format::Yaml => serde_yaml::from_str(&content)?,
         };
 
         Ok(Some(config))
@@ -252,6 +274,8 @@ impl DotCfg {
             Format::Toml => toml::to_string_pretty(config)?,
             #[cfg(feature = "json")]
             Format::Json => serde_json::to_string_pretty(config)?,
+            #[cfg(feature = "yaml")]
+            Format::Yaml => serde_yaml::to_string(config)?,
         };
 
         fs::write(&path, content)?;
@@ -282,6 +306,11 @@ impl DotCfg {
             Format::Json => {
                 let value: serde_json::Value = serde_json::from_str(&content)?;
                 get_json_value(&value, key)
+            }
+            #[cfg(feature = "yaml")]
+            Format::Yaml => {
+                let value: serde_yaml::Value = serde_yaml::from_str(&content)?;
+                get_yaml_value(&value, key)
             }
         }
     }
@@ -321,6 +350,19 @@ impl DotCfg {
                 set_json_value(&mut json, key, value)?;
                 self.ensure_dir()?;
                 fs::write(&path, serde_json::to_string_pretty(&json)?)?;
+            }
+            #[cfg(feature = "yaml")]
+            Format::Yaml => {
+                let mut yaml: serde_yaml::Value = if path.exists() {
+                    let content = fs::read_to_string(&path)?;
+                    serde_yaml::from_str(&content)?
+                } else {
+                    serde_yaml::Value::Mapping(serde_yaml::Mapping::new())
+                };
+
+                set_yaml_value(&mut yaml, key, value)?;
+                self.ensure_dir()?;
+                fs::write(&path, serde_yaml::to_string(&yaml)?)?;
             }
         }
 
@@ -483,6 +525,81 @@ fn json_val_to_string(value: &serde_json::Value) -> String {
     }
 }
 
+// YAML helpers
+#[cfg(feature = "yaml")]
+fn get_yaml_value(value: &serde_yaml::Value, key: &str) -> Result<String, DotCfgError> {
+    let parts: Vec<&str> = key.splitn(2, '.').collect();
+
+    match parts.as_slice() {
+        [field] => value
+            .get(field)
+            .map(yaml_val_to_string)
+            .ok_or_else(|| DotCfgError::KeyNotFound(key.to_string())),
+
+        [section, field] => value
+            .get(section)
+            .and_then(|s| s.get(field))
+            .map(yaml_val_to_string)
+            .ok_or_else(|| DotCfgError::KeyNotFound(key.to_string())),
+
+        _ => Err(DotCfgError::InvalidKey(key.to_string())),
+    }
+}
+
+#[cfg(feature = "yaml")]
+fn set_yaml_value(
+    value: &mut serde_yaml::Value,
+    key: &str,
+    new_val: &str,
+) -> Result<(), DotCfgError> {
+    let parts: Vec<&str> = key.splitn(2, '.').collect();
+    let map = value
+        .as_mapping_mut()
+        .ok_or_else(|| DotCfgError::NotATable("root".to_string()))?;
+
+    match parts.as_slice() {
+        [field] => {
+            map.insert(
+                serde_yaml::Value::String(field.to_string()),
+                serde_yaml::Value::String(new_val.to_string()),
+            );
+        }
+        [section, field] => {
+            let section_val = map
+                .entry(serde_yaml::Value::String(section.to_string()))
+                .or_insert_with(|| serde_yaml::Value::Mapping(serde_yaml::Mapping::new()));
+
+            let section_map = section_val
+                .as_mapping_mut()
+                .ok_or_else(|| DotCfgError::NotATable(section.to_string()))?;
+
+            section_map.insert(
+                serde_yaml::Value::String(field.to_string()),
+                serde_yaml::Value::String(new_val.to_string()),
+            );
+        }
+        _ => return Err(DotCfgError::InvalidKey(key.to_string())),
+    }
+
+    Ok(())
+}
+
+#[cfg(feature = "yaml")]
+fn yaml_val_to_string(value: &serde_yaml::Value) -> String {
+    match value {
+        serde_yaml::Value::String(s) => s.clone(),
+        serde_yaml::Value::Number(n) => n.to_string(),
+        serde_yaml::Value::Bool(b) => b.to_string(),
+        serde_yaml::Value::Null => "null".to_string(),
+        // Sequences, mappings and tagged values are re-emitted as YAML;
+        // `to_string` appends a trailing newline we don't want in a `get()` result.
+        _ => serde_yaml::to_string(value)
+            .unwrap_or_default()
+            .trim_end()
+            .to_string(),
+    }
+}
+
 // Unit tests for private helpers
 #[cfg(test)]
 mod unit_tests {
@@ -532,5 +649,31 @@ mod unit_tests {
         assert_eq!(get_json_value(&val, "username").unwrap(), "tayo");
         set_json_value(&mut val, "user.username", "jane").unwrap();
         assert_eq!(get_json_value(&val, "user.username").unwrap(), "jane");
+    }
+
+    #[cfg(feature = "yaml")]
+    #[test]
+    fn yaml_val_to_string_variants() {
+        assert_eq!(
+            yaml_val_to_string(&serde_yaml::Value::String("hi".into())),
+            "hi"
+        );
+        assert_eq!(
+            yaml_val_to_string(&serde_yaml::Value::Number(42.into())),
+            "42"
+        );
+        assert_eq!(yaml_val_to_string(&serde_yaml::Value::Bool(false)), "false");
+        assert_eq!(yaml_val_to_string(&serde_yaml::Value::Null), "null");
+    }
+
+    #[cfg(feature = "yaml")]
+    #[test]
+    fn get_set_yaml_helper() {
+        let mut val = serde_yaml::Value::Mapping(serde_yaml::Mapping::new());
+        set_yaml_value(&mut val, "username", "tayo").unwrap();
+        assert_eq!(get_yaml_value(&val, "username").unwrap(), "tayo");
+        set_yaml_value(&mut val, "user.username", "jane").unwrap();
+        assert_eq!(get_yaml_value(&val, "user.username").unwrap(), "jane");
+        assert!(get_yaml_value(&val, "missing").is_err());
     }
 }

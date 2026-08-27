@@ -43,4 +43,9 @@ pub enum DotCfgError {
     #[cfg(feature = "json")]
     #[error("JSON error: {0}")]
     Json(#[from] serde_json::Error),
+
+    /// YAML (de)serialization failed.
+    #[cfg(feature = "yaml")]
+    #[error("YAML error: {0}")]
+    Yaml(#[from] serde_yaml::Error),
 }
