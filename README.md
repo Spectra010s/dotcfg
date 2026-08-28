@@ -11,7 +11,7 @@ Flexible config management for Rust apps.
 Most config crates either lock you into a fixed directory strategy or only handle reading. `dotcfg` gives you full control:
 
 - Choose `~/.toolname/` or `~/.config/toolname/` — your call
-- TOML or JSON — feature-gated, include only what you need
+- TOML, JSON or YAML — feature-gated, include only what you need
 - Load the whole config or get/set individual keys without touching the rest
 - Returns `None` if config doesn't exist — no magic, no forced defaults unless you want them
 
@@ -24,8 +24,11 @@ dotcfg = "0.1"
 # JSON only
 dotcfg = { version = "0.1", default-features = false, features = ["json"] }
 
-# Both
-dotcfg = { version = "0.1", features = ["json"] }
+# YAML only
+dotcfg = { version = "0.1", default-features = false, features = ["yaml"] }
+
+# All three
+dotcfg = { version = "0.1", features = ["json", "yaml"] }
 ```
 
 ## Quick Start
@@ -80,6 +83,10 @@ let cfg = DotCfg::new("mytool");
 // JSON (needs `json` feature)
 let cfg = DotCfg::new("mytool").json();
 
+// YAML (needs `yaml` feature)
+let cfg = DotCfg::new("mytool").yaml();
+// → ~/.mytool/config.yaml
+
 // Custom filename
 let cfg = DotCfg::new("mytool").json().filename("settings");
 // → ~/.mytool/settings.json  (or ~/.config/... with .xdg())
@@ -109,7 +116,7 @@ Supports flat and nested (one level: `section.field`) keys:
 cfg.get("username")?;
 cfg.set("username", "tayo")?;
 
-// Nested → [user] table in TOML / nested object in JSON
+// Nested → [user] table in TOML / nested object in JSON / nested mapping in YAML
 cfg.get("user.username")?;
 cfg.set("user.username", "tayo")?;
 ```
@@ -132,6 +139,7 @@ cfg.delete_dir()?;  // delete entire dir
 |---------|---------|-------------|
 | `toml` | ✅ | TOML format support |
 | `json` | ❌ | JSON format support |
+| `yaml` | ❌ | YAML format support |
 
 ## License
 

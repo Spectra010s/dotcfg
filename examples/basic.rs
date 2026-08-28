@@ -27,5 +27,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Show XDG alternative (commented — would use ~/.config/myapp/config.toml)
     // let xdg_cfg = DotCfg::new("myapp").xdg();
 
+    // Same API over YAML — run with `cargo run --example basic --features yaml`
+    #[cfg(feature = "yaml")]
+    {
+        // ~/.myapp/config.yaml
+        let ycfg = DotCfg::new("myapp").yaml();
+        let yconfig: AppConfig = ycfg.load_or_default()?;
+        println!("YAML config: {yconfig:#?}");
+        println!("YAML file: {:?}", ycfg.file_path()?);
+
+        ycfg.set("language", "en")?;
+        println!("language = {}", ycfg.get("language")?);
+    }
+
     Ok(())
 }
