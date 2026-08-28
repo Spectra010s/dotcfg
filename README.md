@@ -134,6 +134,49 @@ cfg.set("user.username", "tayo")?;
 
 `set` creates the file/dir if missing and preserves all other keys. Values are stored as strings.
 
+## Clap Integration
+
+Combine `dotcfg` with `clap` to support standard CLI configuration precedence:
+**CLI argument flag > Config file on disk > Default fallback**.
+
+```rust
+use clap::Parser;
+use dotcfg::DotCfg;
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Default)]
+struct AppConfig {
+    host: String,
+    port: u16,
+}
+
+#[derive(Parser)]
+struct Cli {
+    #[arg(short, long)]
+    host: Option<String>,
+
+    #[arg(short, long)]
+    port: Option<u16>,
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args = Cli::parse();
+    let cfg = DotCfg::new("mycli");
+
+    // Load config from disk or fallback to defaults
+    let saved: AppConfig = cfg.load()?.unwrap_or_default();
+
+    // CLI flag takes precedence over config file
+    let host = args.host.unwrap_or(saved.host);
+    let port = args.port.unwrap_or(saved.port);
+
+    println!("Running on {host}:{port}");
+    Ok(())
+}
+```
+
+See [`examples/clap_cli.rs`](examples/clap_cli.rs) for a full runnable example.
+
 ## Other Utilities
 
 ```rust
