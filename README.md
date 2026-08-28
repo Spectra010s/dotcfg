@@ -15,6 +15,17 @@ Most config crates either lock you into a fixed directory strategy or only handl
 - Load the whole config or get/set individual keys without touching the rest
 - Returns `None` if config doesn't exist — no magic, no forced defaults unless you want them
 
+### Comparison with `confy`
+
+| Feature | `dotcfg` | `confy` |
+| :--- | :---: | :---: |
+| **Dot-dir support (`~/.app/`)** | ✅ Built-in default | ❌ (XDG/Native only) |
+| **XDG directory (`~/.config/app/`)** | ✅ via `.xdg()` | ✅ |
+| **Ad-hoc key get/set by string path** | ✅ (`cfg.get("user.name")`) | ❌ (Full struct only) |
+| **Full struct load/save** | ✅ | ✅ |
+| **Missing file handling** | ✅ Flexible (`None`, default, or error) | ⚠️ Forces file creation with `Default` |
+| **Multiple formats compiled in** | ✅ (TOML, JSON, YAML together) | ❌ Only 1 format can be compiled in |
+
 ## Installation
 
 ```toml
