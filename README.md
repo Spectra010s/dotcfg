@@ -13,6 +13,7 @@ Most config crates either lock you into a fixed directory strategy or only handl
 - Choose `~/.toolname/` or `~/.config/toolname/` — your call
 - TOML, JSON or YAML — feature-gated, include only what you need
 - Load the whole config or get/set individual keys without touching the rest
+- Read and write keys as real types — numbers, bools, arrays, structs — not just strings
 - Returns `None` if config doesn't exist — no magic, no forced defaults unless you want them
 
 ### Comparison with `confy`
@@ -22,6 +23,7 @@ Most config crates either lock you into a fixed directory strategy or only handl
 | **Dot-dir support (`~/.app/`)** | ✅ Built-in default | ❌ (XDG/Native only) |
 | **XDG directory (`~/.config/app/`)** | ✅ via `.xdg()` | ✅ |
 | **Ad-hoc key get/set by string path** | ✅ (`cfg.get("user.name")`) | ❌ (Full struct only) |
+| **Typed key get/set** | ✅ (`cfg.get_as::<u16>("port")`) | ❌ (Full struct only) |
 | **Full struct load/save** | ✅ | ✅ |
 | **Missing file handling** | ✅ Flexible (`None`, default, or error) | ⚠️ Forces file creation with `Default` |
 | **Multiple formats compiled in** | ✅ (TOML, JSON, YAML together) | ❌ Only 1 format can be compiled in |
@@ -67,6 +69,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Per-key (no need to load whole struct)
     cfg.set("username", "jane")?;
     let val = cfg.get("user.username")?;
+
+    // Per-key, typed
+    cfg.set_val("port", 8080u16)?;
+    let port: u16 = cfg.get_as("port")?;
 
     Ok(())
 }
@@ -133,6 +139,41 @@ cfg.set("user.username", "tayo")?;
 ```
 
 `set` creates the file/dir if missing and preserves all other keys. Values are stored as strings.
+
+## Typed Get & Set
+
+`get` and `set` deal in strings. `get_as` and `set_val` deal in real types — the value
+goes straight through serde in the config format's own representation, with no
+stringify/re-parse step in between:
+
+```rust
+// Write native values — numbers stay numbers, arrays stay arrays
+cfg.set_val("port", 8080u16)?;
+cfg.set_val("ratio", 0.75)?;
+cfg.set_val("plugins", vec!["fmt", "lint"])?;
+cfg.set_val("features.auto_update", true)?;
+
+// Read them back into whatever type you need
+let port: u16 = cfg.get_as("port")?;
+let plugins: Vec<String> = cfg.get_as("plugins")?;
+let auto: bool = cfg.get_as("features.auto_update")?;
+```
+
+Any `Serialize` type goes in and any `DeserializeOwned` type comes out, so a whole
+section can be read as a struct:
+
+```rust
+#[derive(Serialize, Deserialize)]
+struct Server { host: String, port: u16 }
+
+cfg.set_val("server", Server { host: "localhost".into(), port: 8080 })?;
+let server: Server = cfg.get_as("server")?;
+```
+
+These are additive — `get`/`set` behave exactly as before. `set_val` follows the same
+rules as `set`: it creates the file/dir if missing, creates the intermediate table for a
+`section.field` key, and preserves every other key. A type mismatch (say `get_as::<u16>`
+on a key holding `"alice"`) returns the format's serde error rather than panicking.
 
 ## Clap Integration
 

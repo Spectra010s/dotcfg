@@ -241,3 +241,166 @@ fn xdg_strategy() {
     assert!(dir.to_string_lossy().contains("config") || dir.to_string_lossy().contains(".config"));
     cfg.delete_dir().unwrap();
 }
+
+// ---------------------------------------------------------------------------
+// Typed accessors: `get_as` / `set_val`
+// ---------------------------------------------------------------------------
+
+/// Every type we promise, exercised against whichever format `cfg` uses.
+/// `set_val` writes native values (numbers, bools, arrays) and `get_as`
+/// deserializes them back without a string round trip.
+fn assert_typed_accessors(cfg: &DotCfg) {
+    cfg.set_val("port", 8080u16).unwrap();
+    cfg.set_val("retries", -3i32).unwrap();
+    cfg.set_val("ratio", 0.75f64).unwrap();
+    cfg.set_val("debug", true).unwrap();
+    cfg.set_val("username", "tayo").unwrap();
+    cfg.set_val("plugins", vec!["fmt".to_string(), "lint".to_string()])
+        .unwrap();
+    cfg.set_val("weights", vec![1i32, 2, 3]).unwrap();
+    // nested dotted path — the intermediate table/map is created on demand
+    cfg.set_val("features.auto_update", true).unwrap();
+
+    assert_eq!(cfg.get_as::<u16>("port").unwrap(), 8080);
+    assert_eq!(cfg.get_as::<i32>("retries").unwrap(), -3);
+    assert_eq!(cfg.get_as::<f64>("ratio").unwrap(), 0.75);
+    assert!(cfg.get_as::<bool>("debug").unwrap());
+    assert_eq!(cfg.get_as::<String>("username").unwrap(), "tayo");
+    assert_eq!(
+        cfg.get_as::<Vec<String>>("plugins").unwrap(),
+        vec!["fmt".to_string(), "lint".to_string()]
+    );
+    assert_eq!(cfg.get_as::<Vec<i32>>("weights").unwrap(), vec![1, 2, 3]);
+    assert!(cfg.get_as::<bool>("features.auto_update").unwrap());
+
+    // a whole section deserializes into a struct
+    cfg.set_val("nested", Nested { val: "deep".into() })
+        .unwrap();
+    assert_eq!(
+        cfg.get_as::<Nested>("nested").unwrap(),
+        Nested { val: "deep".into() }
+    );
+
+    // `get()` still stringifies the same nodes — existing behavior unchanged
+    assert_eq!(cfg.get("port").unwrap(), "8080");
+    assert_eq!(cfg.get("username").unwrap(), "tayo");
+    assert_eq!(cfg.get("features.auto_update").unwrap(), "true");
+
+    // missing key / missing section both report KeyNotFound, not a panic
+    assert!(matches!(
+        cfg.get_as::<u16>("nope").unwrap_err(),
+        DotCfgError::KeyNotFound(_)
+    ));
+    assert!(matches!(
+        cfg.get_as::<u16>("nope.nope").unwrap_err(),
+        DotCfgError::KeyNotFound(_)
+    ));
+}
+
+/// TOML typed accessors across every supported value type.
+#[cfg(feature = "toml")]
+#[test]
+fn toml_typed_accessors() {
+    let cfg = unique_cfg("toml_typed").toml();
+    assert_typed_accessors(&cfg);
+    cfg.delete_dir().unwrap();
+}
+
+/// JSON typed accessors across every supported value type.
+#[cfg(feature = "json")]
+#[test]
+fn json_typed_accessors() {
+    let cfg = unique_cfg("json_typed").json();
+    assert_typed_accessors(&cfg);
+    cfg.delete_dir().unwrap();
+}
+
+/// YAML typed accessors across every supported value type.
+#[cfg(feature = "yaml")]
+#[test]
+fn yaml_typed_accessors() {
+    let cfg = unique_cfg("yaml_typed").yaml();
+    assert_typed_accessors(&cfg);
+    cfg.delete_dir().unwrap();
+}
+
+/// Round trip: `set_val` a value, `get_as` it back, and confirm the file still
+/// loads as a whole struct with the typed values intact.
+#[test]
+fn set_val_get_as_roundtrip() {
+    let cfg = unique_cfg("typed_roundtrip");
+
+    cfg.set_val("username", "tayo").unwrap();
+    cfg.set_val("port", 8080u16).unwrap();
+
+    assert_eq!(cfg.get_as::<String>("username").unwrap(), "tayo");
+    assert_eq!(cfg.get_as::<u16>("port").unwrap(), 8080);
+
+    // the port landed as a number, so the full struct load still works
+    let loaded: TestConfig = cfg.load().unwrap().unwrap();
+    assert_eq!(
+        loaded,
+        TestConfig {
+            username: "tayo".into(),
+            port: 8080,
+            nested: None,
+        }
+    );
+
+    cfg.delete_dir().unwrap();
+}
+
+/// `set_val` only touches its own key — everything else survives.
+#[test]
+fn set_val_preserves_other_keys() {
+    let cfg = unique_cfg("typed_preserve");
+    cfg.save(&TestConfig {
+        username: "keep".into(),
+        port: 9090,
+        nested: None,
+    })
+    .unwrap();
+
+    cfg.set_val("port", 1234u16).unwrap();
+
+    let loaded: TestConfig = cfg.load().unwrap().unwrap();
+    assert_eq!(loaded.username, "keep");
+    assert_eq!(loaded.port, 1234);
+    cfg.delete_dir().unwrap();
+}
+
+/// `set_val` on a missing file creates dir + file from scratch.
+#[test]
+fn set_val_creates_file() {
+    let cfg = unique_cfg("typed_create");
+    assert!(!cfg.exists().unwrap());
+    cfg.set_val("features.auto_update", true).unwrap();
+    assert!(cfg.exists().unwrap());
+    assert!(cfg.get_as::<bool>("features.auto_update").unwrap());
+    cfg.delete_dir().unwrap();
+}
+
+/// A type mismatch is an error, never a panic.
+#[test]
+fn get_as_type_mismatch_errors() {
+    let cfg = unique_cfg("typed_mismatch");
+    cfg.set("username", "alice").unwrap();
+
+    let res = cfg.get_as::<u16>("username");
+    assert!(res.is_err(), "expected Err for non-numeric value");
+    // and it is not one of the lookup errors — it comes from serde
+    assert!(!matches!(
+        res.unwrap_err(),
+        DotCfgError::KeyNotFound(_) | DotCfgError::NotFound
+    ));
+
+    cfg.delete_dir().unwrap();
+}
+
+/// `get_as` on a missing config file reports NotFound, like `get`.
+#[test]
+fn get_as_missing_file_errors() {
+    let cfg = unique_cfg("typed_missing");
+    let res = cfg.get_as::<u16>("port");
+    assert!(matches!(res.unwrap_err(), DotCfgError::NotFound));
+}
