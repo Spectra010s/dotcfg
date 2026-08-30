@@ -25,6 +25,14 @@ pub enum DotCfgError {
     #[error("'{0}' is not a table")]
     NotATable(String),
 
+    /// An environment-variable override could not be read as the requested type.
+    #[error("Invalid value for env var '{0}': {1}")]
+    EnvParse(String, String),
+
+    /// An environment-variable override is not valid unicode.
+    #[error("Env var '{0}' is not valid unicode")]
+    EnvNotUnicode(String),
+
     /// Underlying IO error (read/write/create dir).
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
