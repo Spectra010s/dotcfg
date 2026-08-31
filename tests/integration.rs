@@ -404,3 +404,122 @@ fn get_as_missing_file_errors() {
     let res = cfg.get_as::<u16>("port");
     assert!(matches!(res.unwrap_err(), DotCfgError::NotFound));
 }
+
+// ---------------------------------------------------------------------------
+// Environment variable overrides (`with_env_prefix`)
+// ---------------------------------------------------------------------------
+
+/// SAFETY: each test derives its var names from the process id plus its own
+/// suffix, so no other test in this binary touches the same variables.
+fn set_env(var: &str, val: &str) {
+    unsafe { std::env::set_var(var, val) }
+}
+
+fn remove_env(var: &str) {
+    unsafe { std::env::remove_var(var) }
+}
+
+/// Unique env prefix per test, matching the `unique_cfg` convention.
+fn unique_prefix(suffix: &str) -> String {
+    format!("dotcfg_env_{}_{}", suffix, std::process::id())
+}
+
+/// File says 8080, env says 9000 — env wins for both `get` and `get_as`.
+#[test]
+fn env_overrides_file_value() {
+    let prefix = unique_prefix("override");
+    set_env(&format!("{}_PORT", prefix.to_ascii_uppercase()), "9000");
+
+    let cfg = unique_cfg("env_override").with_env_prefix(&prefix);
+    cfg.save(&TestConfig {
+        username: "alice".into(),
+        port: 8080,
+        nested: None,
+    })
+    .unwrap();
+
+    assert_eq!(cfg.get_as::<u16>("port").unwrap(), 9000);
+    assert_eq!(cfg.get("port").unwrap(), "9000");
+
+    // keys without an override still come from the file
+    assert_eq!(cfg.get("username").unwrap(), "alice");
+    assert_eq!(cfg.get_as::<String>("username").unwrap(), "alice");
+
+    // and the whole-struct load is untouched by env overrides
+    let loaded: TestConfig = cfg.load().unwrap().unwrap();
+    assert_eq!(loaded.port, 8080);
+
+    cfg.delete_dir().unwrap();
+}
+
+/// Without `with_env_prefix`, a matching variable is ignored entirely.
+#[test]
+fn env_ignored_without_prefix() {
+    let prefix = unique_prefix("noprefix");
+    set_env(&format!("{}_PORT", prefix.to_ascii_uppercase()), "9000");
+
+    // same app, no prefix configured
+    let cfg = unique_cfg("env_noprefix");
+    cfg.set_val("port", 8080u16).unwrap();
+
+    assert_eq!(cfg.get_as::<u16>("port").unwrap(), 8080);
+    cfg.delete_dir().unwrap();
+}
+
+/// `set_val` writes the file and leaves the environment alone — so the env
+/// override still wins afterwards, and the new file value only surfaces once
+/// the variable is removed.
+#[test]
+fn set_val_does_not_touch_env_and_env_keeps_precedence() {
+    let prefix = unique_prefix("setval");
+    let var = format!("{}_PORT", prefix.to_ascii_uppercase());
+    set_env(&var, "9000");
+
+    let cfg = unique_cfg("env_setval").with_env_prefix(&prefix);
+    cfg.save(&TestConfig {
+        username: "alice".into(),
+        port: 8080,
+        nested: None,
+    })
+    .unwrap();
+    cfg.set_val("port", 1234u16).unwrap();
+
+    // the write went to the file, not the environment
+    assert_eq!(std::env::var(&var).unwrap(), "9000");
+
+    // reads still prefer the override over the value just written
+    assert_eq!(cfg.get_as::<u16>("port").unwrap(), 9000);
+
+    // the file really did get 1234 — visible via the whole-struct load...
+    let loaded: TestConfig = cfg.load().unwrap().unwrap();
+    assert_eq!(loaded.port, 1234);
+
+    // ...and via `get_as` once the override goes away
+    remove_env(&var);
+    assert_eq!(cfg.get_as::<u16>("port").unwrap(), 1234);
+
+    cfg.delete_dir().unwrap();
+}
+
+/// A malformed override errors instead of panicking or silently using the file.
+#[test]
+fn env_malformed_value_errors() {
+    let prefix = unique_prefix("malformed");
+    set_env(
+        &format!("{}_PORT", prefix.to_ascii_uppercase()),
+        "notanumber",
+    );
+
+    let cfg = unique_cfg("env_malformed").with_env_prefix(&prefix);
+    cfg.set_val("port", 8080u16).unwrap();
+
+    let err = cfg.get_as::<u16>("port").unwrap_err();
+    assert!(matches!(err, DotCfgError::EnvParse(_, _)), "{err}");
+    // the message names the variable and the offending value
+    assert!(err.to_string().contains("notanumber"), "{err}");
+
+    // `get` is untyped, so the raw string comes back unchanged
+    assert_eq!(cfg.get("port").unwrap(), "notanumber");
+
+    cfg.delete_dir().unwrap();
+}

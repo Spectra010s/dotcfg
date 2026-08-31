@@ -7,6 +7,7 @@
 //! - Load, save, get, set — full or per-key
 //! - Typed per-key access with `get_as` / `set_val` (numbers, bools, arrays, structs)
 //! - Flat (`username`) and nested (`user.username`) key support
+//! - Opt-in environment variable overrides via `with_env_prefix`
 //! - Returns `None` if config doesn't exist — no magic auto-create unless you want it
 //!
 //! ## Features
@@ -50,6 +51,7 @@
 //! }
 //! ```
 
+mod env;
 pub mod error;
 
 use std::{fs, path::PathBuf};
@@ -104,6 +106,7 @@ pub struct DotCfg {
     strategy: DirStrategy,
     format: Format,
     filename: String,
+    env_prefix: Option<String>,
 }
 
 impl DotCfg {
@@ -120,6 +123,7 @@ impl DotCfg {
             #[cfg(all(feature = "yaml", not(feature = "toml"), not(feature = "json")))]
             format: Format::Yaml,
             filename: "config".to_string(),
+            env_prefix: None,
         }
     }
 
@@ -160,6 +164,66 @@ impl DotCfg {
     pub fn filename(mut self, name: impl Into<String>) -> Self {
         self.filename = name.into();
         self
+    }
+
+    /// Let environment variables override per-key reads.
+    ///
+    /// Once a prefix is set, [`Self::get`] and [`Self::get_as`] check the
+    /// environment first and only fall back to the config file when the
+    /// variable is unset. Opt-in: without this, the environment is never read.
+    ///
+    /// A key maps to `<PREFIX>_<KEY>`, uppercased, with `.` replaced by `_`:
+    ///
+    /// | key | env var (prefix `myapp`) |
+    /// | :-- | :-- |
+    /// | `port` | `MYAPP_PORT` |
+    /// | `user.name` | `MYAPP_USER_NAME` |
+    ///
+    /// ```rust,no_run
+    /// # use dotcfg::DotCfg;
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let cfg = DotCfg::new("mytool").with_env_prefix("myapp");
+    ///
+    /// // reads $MYAPP_PORT if set, otherwise `port` from the config file
+    /// let port: u16 = cfg.get_as("port")?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// Writes are unaffected — [`Self::set`] and [`Self::set_val`] always go to
+    /// the file and never touch the environment.
+    pub fn with_env_prefix(mut self, prefix: impl Into<String>) -> Self {
+        self.env_prefix = Some(prefix.into());
+        self
+    }
+
+    /// The env var name `key` maps to, or `None` when no prefix is configured.
+    ///
+    /// Single source of truth for the mapping — both read paths go through it.
+    fn env_var_name(&self, key: &str) -> Option<String> {
+        let prefix = self.env_prefix.as_ref()?;
+        Some(format!(
+            "{}_{}",
+            prefix.to_ascii_uppercase(),
+            key.replace('.', "_").to_ascii_uppercase()
+        ))
+    }
+
+    /// The environment override for `key`, as `(var name, raw value)`.
+    ///
+    /// `Ok(None)` means "no prefix configured, or the var is unset" — i.e. fall
+    /// through to the file. A var that is set but unreadable is an error rather
+    /// than a silent fallback, so a misconfigured environment stays visible.
+    fn env_override(&self, key: &str) -> Result<Option<(String, String)>, DotCfgError> {
+        let Some(var) = self.env_var_name(key) else {
+            return Ok(None);
+        };
+
+        match std::env::var(&var) {
+            Ok(raw) => Ok(Some((var, raw))),
+            Err(std::env::VarError::NotPresent) => Ok(None),
+            Err(std::env::VarError::NotUnicode(_)) => Err(DotCfgError::EnvNotUnicode(var)),
+        }
     }
 
     /// Returns the config directory path
@@ -291,8 +355,14 @@ impl DotCfg {
     ///
     /// Supports flat keys (`"username"`) and nested keys (`"user.username"`).
     ///
-    /// Returns the value as a `String`.
+    /// Returns the value as a `String`. If [`Self::with_env_prefix`] is set and
+    /// the matching environment variable exists, its raw value is returned
+    /// as-is and the file is not read.
     pub fn get(&self, key: &str) -> Result<String, DotCfgError> {
+        if let Some((_, raw)) = self.env_override(key)? {
+            return Ok(raw);
+        }
+
         let path = self.file_path()?;
 
         if !path.exists() {
@@ -394,12 +464,27 @@ impl DotCfg {
     /// # }
     /// ```
     ///
+    /// # Environment overrides
+    ///
+    /// With [`Self::with_env_prefix`] set, a matching environment variable wins
+    /// over the file. Env values are untyped strings, so they are parsed rather
+    /// than deserialized from a native value: numbers and floats via
+    /// [`str::parse`], `bool` as `true`/`false`/`1`/`0` (case-insensitive), and
+    /// sequences as **comma-separated** items (`MYAPP_TAGS=cli,fast`). Maps and
+    /// structs can't come from a single variable — use nested keys.
+    ///
     /// # Errors
     ///
     /// - [`DotCfgError::NotFound`] if the config file doesn't exist
     /// - [`DotCfgError::KeyNotFound`] if the key isn't present
-    /// - the format's own (de)serialization error if the value isn't a `T`
+    /// - [`DotCfgError::EnvParse`] if an env override isn't readable as a `T`
+    ///   (a bad override is never silently ignored in favor of the file)
+    /// - the format's own (de)serialization error if the file value isn't a `T`
     pub fn get_as<T: serde::de::DeserializeOwned>(&self, key: &str) -> Result<T, DotCfgError> {
+        if let Some((var, raw)) = self.env_override(key)? {
+            return env::from_env_str(&var, &raw);
+        }
+
         let path = self.file_path()?;
 
         if !path.exists() {
@@ -764,6 +849,111 @@ fn yaml_val_to_string(value: &serde_yaml::Value) -> String {
 #[cfg(test)]
 mod unit_tests {
     use super::*;
+
+    /// Sets a uniquely-named env var for one test.
+    ///
+    /// SAFETY: every test here builds its var name from the process id plus its
+    /// own suffix, so no other test in this binary reads or writes the same var.
+    fn set_env(var: &str, val: &str) {
+        unsafe { std::env::set_var(var, val) }
+    }
+
+    /// Unique env prefix per test, so parallel tests can't see each other's vars.
+    fn env_prefix(suffix: &str) -> String {
+        format!("dotcfg_t_{}_{}", suffix, std::process::id())
+    }
+
+    #[test]
+    fn env_var_name_mapping() {
+        let cfg = DotCfg::new("mytool").with_env_prefix("myapp");
+
+        // flat key
+        assert_eq!(cfg.env_var_name("port").unwrap(), "MYAPP_PORT");
+        // nested key — dots become underscores
+        assert_eq!(cfg.env_var_name("user.name").unwrap(), "MYAPP_USER_NAME");
+        // already-uppercase input is left alone
+        assert_eq!(cfg.env_var_name("PORT").unwrap(), "MYAPP_PORT");
+        // the prefix is uppercased too
+        assert_eq!(
+            DotCfg::new("mytool")
+                .with_env_prefix("MyApp")
+                .env_var_name("port")
+                .unwrap(),
+            "MYAPP_PORT"
+        );
+
+        // no prefix configured — no env var to look at
+        assert!(DotCfg::new("mytool").env_var_name("port").is_none());
+    }
+
+    #[test]
+    fn env_override_three_way_fallback() {
+        let prefix = env_prefix("threeway");
+        let var = format!("{}_PORT", prefix.to_ascii_uppercase());
+
+        // 1. no prefix configured — environment is never consulted
+        set_env(&var, "9000");
+        assert!(
+            DotCfg::new("mytool")
+                .env_override("port")
+                .unwrap()
+                .is_none()
+        );
+
+        let cfg = DotCfg::new("mytool").with_env_prefix(&prefix);
+
+        // 2. prefix set and the var exists — override wins
+        let (found_var, raw) = cfg.env_override("port").unwrap().unwrap();
+        assert_eq!(found_var, var);
+        assert_eq!(raw, "9000");
+
+        // 3. prefix set but this key's var is unset — fall through to the file
+        assert!(cfg.env_override("not_set_anywhere").unwrap().is_none());
+    }
+
+    #[test]
+    fn env_get_returns_raw_string() {
+        let prefix = env_prefix("get_raw");
+        set_env(&format!("{}_USERNAME", prefix.to_ascii_uppercase()), "jane");
+
+        // no config file exists for this app name — the override still resolves
+        let cfg = DotCfg::new("dotcfg_no_such_app").with_env_prefix(&prefix);
+        assert_eq!(cfg.get("username").unwrap(), "jane");
+
+        // an unset key with no file still reports NotFound
+        assert!(matches!(
+            cfg.get("username_other").unwrap_err(),
+            DotCfgError::NotFound
+        ));
+    }
+
+    #[test]
+    fn env_get_as_typed_values() {
+        let prefix = env_prefix("get_as");
+        let up = prefix.to_ascii_uppercase();
+        set_env(&format!("{up}_PORT"), "9000");
+        set_env(&format!("{up}_DEBUG"), "true");
+        set_env(&format!("{up}_PLUGINS"), "fmt,lint");
+        set_env(&format!("{up}_FEATURES_AUTO_UPDATE"), "false");
+        set_env(&format!("{up}_BAD"), "notanumber");
+
+        let cfg = DotCfg::new("dotcfg_no_such_app").with_env_prefix(&prefix);
+
+        assert_eq!(cfg.get_as::<u16>("port").unwrap(), 9000);
+        assert!(cfg.get_as::<bool>("debug").unwrap());
+        assert_eq!(
+            cfg.get_as::<Vec<String>>("plugins").unwrap(),
+            vec!["fmt".to_string(), "lint".to_string()]
+        );
+        // nested key maps through the same transform
+        assert!(!cfg.get_as::<bool>("features.auto_update").unwrap());
+
+        // a malformed override is an error, not a panic and not a silent fallback
+        assert!(matches!(
+            cfg.get_as::<u16>("bad").unwrap_err(),
+            DotCfgError::EnvParse(_, _)
+        ));
+    }
 
     #[cfg(feature = "toml")]
     #[test]
