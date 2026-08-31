@@ -142,38 +142,41 @@ cfg.set("user.username", "tayo")?;
 
 ## Typed Get & Set
 
-`get` and `set` deal in strings. `get_as` and `set_val` deal in real types — the value
-goes straight through serde in the config format's own representation, with no
-stringify/re-parse step in between:
+You can get a value from the config as a specific type you choose — the methods are `get_as` and `set_val` (like `get`/`set` but typed).
+
+Use when this config must be a real type. For example, you want `port` to always be a positive number:
 
 ```rust
-// Write native values — numbers stay numbers, arrays stay arrays
+// “port must be a number” — store and get it as u16 directly
 cfg.set_val("port", 8080u16)?;
-cfg.set_val("ratio", 0.75)?;
-cfg.set_val("plugins", vec!["fmt", "lint"])?;
-cfg.set_val("features.auto_update", true)?;
+let port: u16 = cfg.get_as("port")?; // no parse::<u16>(), type-safe
 
-// Read them back into whatever type you need
-let port: u16 = cfg.get_as("port")?;
+// same for other types — bool, Vec, or a whole struct
+cfg.set_val("features.auto_update", true)?;
+let enabled: bool = cfg.get_as("features.auto_update")?;
+cfg.set_val("plugins", vec!["fmt".to_string(), "lint".to_string()])?;
 let plugins: Vec<String> = cfg.get_as("plugins")?;
-let auto: bool = cfg.get_as("features.auto_update")?;
 ```
 
-Any `Serialize` type goes in and any `DeserializeOwned` type comes out, so a whole
-section can be read as a struct:
+`get_as` infers the type you ask for (`u16`, `bool`, `Vec<String>`, or a whole `struct` like `Server { host, port }`), so you don’t parse strings yourself. A mismatch (e.g., `get_as::<u16>` on `"alice"`) returns a clear error.
+
+These work like `get`/`set`: `set_val` creates the file/dir if missing, handles `section.field`, and preserves other keys.
+
+## Environment Variable Overrides
+
+You can let environment variables override the config file — the method is `with_env_prefix`.
+
+Use when you want `MYAPP_PORT=9000` to take precedence over `port` in the file without changing the file:
 
 ```rust
-#[derive(Serialize, Deserialize)]
-struct Server { host: String, port: u16 }
+let cfg = DotCfg::new("mytool").with_env_prefix("MYAPP");
 
-cfg.set_val("server", Server { host: "localhost".into(), port: 8080 })?;
-let server: Server = cfg.get_as("server")?;
+// MYAPP_PORT if set, otherwise `port` from the file
+let port: u16 = cfg.get_as("port")?;
+// MYAPP_USER_NAME for `user.name`, MYAPP_PLUGINS=fmt,lint for `Vec<String>`
 ```
 
-These are additive — `get`/`set` behave exactly as before. `set_val` follows the same
-rules as `set`: it creates the file/dir if missing, creates the intermediate table for a
-`section.field` key, and preserves every other key. A type mismatch (say `get_as::<u16>`
-on a key holding `"alice"`) returns the format's serde error rather than panicking.
+`get` returns the raw env string, `get_as` parses it (`bool` as `true`/`false`/`1`/`0`, numbers, `Vec` as comma-separated). `set`/`set_val` still write only to the file.
 
 ## Clap Integration
 
