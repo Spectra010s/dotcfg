@@ -55,5 +55,5 @@ pub enum DotCfgError {
     /// YAML (de)serialization failed.
     #[cfg(feature = "yaml")]
     #[error("YAML error: {0}")]
-    Yaml(#[from] serde_yaml::Error),
+    Yaml(#[from] serde_yaml_ng::Error),
 }
