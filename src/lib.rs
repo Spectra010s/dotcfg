@@ -1,6 +1,6 @@
 //! # dotcfg
 //!
-//! Flexible config management for Rust apps.
+//! Flexible config management for Rust applications.
 //!
 //! - Choose between `~/.toolname/` or `~/.config/toolname/`
 //! - TOML, JSON or YAML format (feature-gated)
