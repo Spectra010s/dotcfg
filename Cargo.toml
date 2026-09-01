@@ -17,13 +17,13 @@ rust-version = "1.85"
 default = ["toml"]
 toml = ["dep:toml"]
 json = ["dep:serde_json"]
-yaml = ["dep:serde_yaml"]
+yaml = ["dep:serde_yaml_ng"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 toml = { version = "0.8", optional = true }
 serde_json = { version = "1", optional = true }
-serde_yaml = { version = "0.9", optional = true }
+serde_yaml_ng = { version = "0.10", optional = true }
 home = "0.5"
 etcetera = "0.8"
 thiserror = "2"
