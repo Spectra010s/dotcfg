@@ -298,7 +298,7 @@ impl DotCfg {
             #[cfg(feature = "json")]
             Format::Json => serde_json::from_str(&content)?,
             #[cfg(feature = "yaml")]
-            Format::Yaml => serde_yaml::from_str(&content)?,
+            Format::Yaml => serde_yaml_ng::from_str(&content)?,
         };
 
         Ok(Some(config))
@@ -344,7 +344,7 @@ impl DotCfg {
             #[cfg(feature = "json")]
             Format::Json => serde_json::to_string_pretty(config)?,
             #[cfg(feature = "yaml")]
-            Format::Yaml => serde_yaml::to_string(config)?,
+            Format::Yaml => serde_yaml_ng::to_string(config)?,
         };
 
         fs::write(&path, content)?;
@@ -384,7 +384,7 @@ impl DotCfg {
             }
             #[cfg(feature = "yaml")]
             Format::Yaml => {
-                let value: serde_yaml::Value = serde_yaml::from_str(&content)?;
+                let value: serde_yaml_ng::Value = serde_yaml_ng::from_str(&content)?;
                 get_yaml_value(&value, key)
             }
         }
@@ -428,16 +428,16 @@ impl DotCfg {
             }
             #[cfg(feature = "yaml")]
             Format::Yaml => {
-                let mut yaml: serde_yaml::Value = if path.exists() {
+                let mut yaml: serde_yaml_ng::Value = if path.exists() {
                     let content = fs::read_to_string(&path)?;
-                    serde_yaml::from_str(&content)?
+                    serde_yaml_ng::from_str(&content)?
                 } else {
-                    serde_yaml::Value::Mapping(serde_yaml::Mapping::new())
+                    serde_yaml_ng::Value::Mapping(serde_yaml_ng::Mapping::new())
                 };
 
                 set_yaml_value(&mut yaml, key, value)?;
                 self.ensure_dir()?;
-                fs::write(&path, serde_yaml::to_string(&yaml)?)?;
+                fs::write(&path, serde_yaml_ng::to_string(&yaml)?)?;
             }
         }
 
@@ -506,8 +506,8 @@ impl DotCfg {
             }
             #[cfg(feature = "yaml")]
             Format::Yaml => {
-                let value: serde_yaml::Value = serde_yaml::from_str(&content)?;
-                Ok(serde_yaml::from_value(get_yaml_node(&value, key)?.clone())?)
+                let value: serde_yaml_ng::Value = serde_yaml_ng::from_str(&content)?;
+                Ok(serde_yaml_ng::from_value(get_yaml_node(&value, key)?.clone())?)
             }
         }
     }
@@ -569,18 +569,18 @@ impl DotCfg {
             }
             #[cfg(feature = "yaml")]
             Format::Yaml => {
-                let new_val = serde_yaml::to_value(value)?;
+                let new_val = serde_yaml_ng::to_value(value)?;
 
-                let mut yaml: serde_yaml::Value = if path.exists() {
+                let mut yaml: serde_yaml_ng::Value = if path.exists() {
                     let content = fs::read_to_string(&path)?;
-                    serde_yaml::from_str(&content)?
+                    serde_yaml_ng::from_str(&content)?
                 } else {
-                    serde_yaml::Value::Mapping(serde_yaml::Mapping::new())
+                    serde_yaml_ng::Value::Mapping(serde_yaml_ng::Mapping::new())
                 };
 
                 set_yaml_node(&mut yaml, key, new_val)?;
                 self.ensure_dir()?;
-                fs::write(&path, serde_yaml::to_string(&yaml)?)?;
+                fs::write(&path, serde_yaml_ng::to_string(&yaml)?)?;
             }
         }
 
@@ -767,9 +767,9 @@ fn json_val_to_string(value: &serde_json::Value) -> String {
 /// YAML counterpart of [`get_toml_node`].
 #[cfg(feature = "yaml")]
 fn get_yaml_node<'a>(
-    value: &'a serde_yaml::Value,
+    value: &'a serde_yaml_ng::Value,
     key: &str,
-) -> Result<&'a serde_yaml::Value, DotCfgError> {
+) -> Result<&'a serde_yaml_ng::Value, DotCfgError> {
     let parts: Vec<&str> = key.splitn(2, '.').collect();
 
     match parts.as_slice() {
@@ -783,16 +783,16 @@ fn get_yaml_node<'a>(
 }
 
 #[cfg(feature = "yaml")]
-fn get_yaml_value(value: &serde_yaml::Value, key: &str) -> Result<String, DotCfgError> {
+fn get_yaml_value(value: &serde_yaml_ng::Value, key: &str) -> Result<String, DotCfgError> {
     get_yaml_node(value, key).map(yaml_val_to_string)
 }
 
 /// YAML counterpart of [`set_toml_node`].
 #[cfg(feature = "yaml")]
 fn set_yaml_node(
-    value: &mut serde_yaml::Value,
+    value: &mut serde_yaml_ng::Value,
     key: &str,
-    new_val: serde_yaml::Value,
+    new_val: serde_yaml_ng::Value,
 ) -> Result<(), DotCfgError> {
     let parts: Vec<&str> = key.splitn(2, '.').collect();
     let map = value
@@ -801,18 +801,18 @@ fn set_yaml_node(
 
     match parts.as_slice() {
         [field] => {
-            map.insert(serde_yaml::Value::String(field.to_string()), new_val);
+            map.insert(serde_yaml_ng::Value::String(field.to_string()), new_val);
         }
         [section, field] => {
             let section_val = map
-                .entry(serde_yaml::Value::String(section.to_string()))
-                .or_insert_with(|| serde_yaml::Value::Mapping(serde_yaml::Mapping::new()));
+                .entry(serde_yaml_ng::Value::String(section.to_string()))
+                .or_insert_with(|| serde_yaml_ng::Value::Mapping(serde_yaml_ng::Mapping::new()));
 
             let section_map = section_val
                 .as_mapping_mut()
                 .ok_or_else(|| DotCfgError::NotATable(section.to_string()))?;
 
-            section_map.insert(serde_yaml::Value::String(field.to_string()), new_val);
+            section_map.insert(serde_yaml_ng::Value::String(field.to_string()), new_val);
         }
         _ => return Err(DotCfgError::InvalidKey(key.to_string())),
     }
@@ -822,23 +822,23 @@ fn set_yaml_node(
 
 #[cfg(feature = "yaml")]
 fn set_yaml_value(
-    value: &mut serde_yaml::Value,
+    value: &mut serde_yaml_ng::Value,
     key: &str,
     new_val: &str,
 ) -> Result<(), DotCfgError> {
-    set_yaml_node(value, key, serde_yaml::Value::String(new_val.to_string()))
+    set_yaml_node(value, key, serde_yaml_ng::Value::String(new_val.to_string()))
 }
 
 #[cfg(feature = "yaml")]
-fn yaml_val_to_string(value: &serde_yaml::Value) -> String {
+fn yaml_val_to_string(value: &serde_yaml_ng::Value) -> String {
     match value {
-        serde_yaml::Value::String(s) => s.clone(),
-        serde_yaml::Value::Number(n) => n.to_string(),
-        serde_yaml::Value::Bool(b) => b.to_string(),
-        serde_yaml::Value::Null => "null".to_string(),
+        serde_yaml_ng::Value::String(s) => s.clone(),
+        serde_yaml_ng::Value::Number(n) => n.to_string(),
+        serde_yaml_ng::Value::Bool(b) => b.to_string(),
+        serde_yaml_ng::Value::Null => "null".to_string(),
         // Sequences, mappings and tagged values are re-emitted as YAML;
         // `to_string` appends a trailing newline we don't want in a `get()` result.
-        _ => serde_yaml::to_string(value)
+        _ => serde_yaml_ng::to_string(value)
             .unwrap_or_default()
             .trim_end()
             .to_string(),
@@ -1058,21 +1058,21 @@ mod unit_tests {
     #[test]
     fn yaml_val_to_string_variants() {
         assert_eq!(
-            yaml_val_to_string(&serde_yaml::Value::String("hi".into())),
+            yaml_val_to_string(&serde_yaml_ng::Value::String("hi".into())),
             "hi"
         );
         assert_eq!(
-            yaml_val_to_string(&serde_yaml::Value::Number(42.into())),
+            yaml_val_to_string(&serde_yaml_ng::Value::Number(42.into())),
             "42"
         );
-        assert_eq!(yaml_val_to_string(&serde_yaml::Value::Bool(false)), "false");
-        assert_eq!(yaml_val_to_string(&serde_yaml::Value::Null), "null");
+        assert_eq!(yaml_val_to_string(&serde_yaml_ng::Value::Bool(false)), "false");
+        assert_eq!(yaml_val_to_string(&serde_yaml_ng::Value::Null), "null");
     }
 
     #[cfg(feature = "yaml")]
     #[test]
     fn get_set_yaml_helper() {
-        let mut val = serde_yaml::Value::Mapping(serde_yaml::Mapping::new());
+        let mut val = serde_yaml_ng::Value::Mapping(serde_yaml_ng::Mapping::new());
         set_yaml_value(&mut val, "username", "tayo").unwrap();
         assert_eq!(get_yaml_value(&val, "username").unwrap(), "tayo");
         set_yaml_value(&mut val, "user.username", "jane").unwrap();
@@ -1082,26 +1082,26 @@ mod unit_tests {
     #[cfg(feature = "yaml")]
     #[test]
     fn yaml_node_helpers_roundtrip_typed_values() {
-        let mut val = serde_yaml::Value::Mapping(serde_yaml::Mapping::new());
+        let mut val = serde_yaml_ng::Value::Mapping(serde_yaml_ng::Mapping::new());
 
         set_yaml_node(
             &mut val,
             "plugins",
-            serde_yaml::Value::Sequence(vec![
-                serde_yaml::Value::String("fmt".into()),
-                serde_yaml::Value::String("lint".into()),
+            serde_yaml_ng::Value::Sequence(vec![
+                serde_yaml_ng::Value::String("fmt".into()),
+                serde_yaml_ng::Value::String("lint".into()),
             ]),
         )
         .unwrap();
         set_yaml_node(
             &mut val,
             "features.auto_update",
-            serde_yaml::Value::Bool(true),
+            serde_yaml_ng::Value::Bool(true),
         )
         .unwrap();
 
         let plugins: Vec<String> =
-            serde_yaml::from_value(get_yaml_node(&val, "plugins").unwrap().clone()).unwrap();
+            serde_yaml_ng::from_value(get_yaml_node(&val, "plugins").unwrap().clone()).unwrap();
         assert_eq!(plugins, vec!["fmt", "lint"]);
         assert!(
             get_yaml_node(&val, "features.auto_update")
