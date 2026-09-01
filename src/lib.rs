@@ -507,7 +507,9 @@ impl DotCfg {
             #[cfg(feature = "yaml")]
             Format::Yaml => {
                 let value: serde_yaml_ng::Value = serde_yaml_ng::from_str(&content)?;
-                Ok(serde_yaml_ng::from_value(get_yaml_node(&value, key)?.clone())?)
+                Ok(serde_yaml_ng::from_value(
+                    get_yaml_node(&value, key)?.clone(),
+                )?)
             }
         }
     }
@@ -826,7 +828,11 @@ fn set_yaml_value(
     key: &str,
     new_val: &str,
 ) -> Result<(), DotCfgError> {
-    set_yaml_node(value, key, serde_yaml_ng::Value::String(new_val.to_string()))
+    set_yaml_node(
+        value,
+        key,
+        serde_yaml_ng::Value::String(new_val.to_string()),
+    )
 }
 
 #[cfg(feature = "yaml")]
@@ -1065,7 +1071,10 @@ mod unit_tests {
             yaml_val_to_string(&serde_yaml_ng::Value::Number(42.into())),
             "42"
         );
-        assert_eq!(yaml_val_to_string(&serde_yaml_ng::Value::Bool(false)), "false");
+        assert_eq!(
+            yaml_val_to_string(&serde_yaml_ng::Value::Bool(false)),
+            "false"
+        );
         assert_eq!(yaml_val_to_string(&serde_yaml_ng::Value::Null), "null");
     }
 
