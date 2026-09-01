@@ -23,7 +23,10 @@ jobs:
             ~/.cargo/git/db/
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ matrix.rust }}
-      - run: cargo check
-      - run: cargo test
+      - run: cargo check --all-features
+      - run: cargo test --all-features
+      - run: cargo test --no-default-features --features toml
+      - run: cargo test --no-default-features --features json
+      - run: cargo test --no-default-features --features yaml
       - run: cargo fmt --check
-      - run: cargo clippy -- -D warnings
+      - run: cargo clippy --all-features -- -D warnings
