@@ -4,7 +4,7 @@
 [![crates.io](https://img.shields.io/crates/v/dotcfg)](https://crates.io/crates/dotcfg)
 [![docs.rs](https://img.shields.io/docsrs/dotcfg)](https://docs.rs/dotcfg)
 
-Flexible config management for Rust apps.
+Flexible config management for Rust applications.
 
 ## Why dotcfg?
 
