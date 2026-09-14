@@ -47,7 +47,10 @@ fn custom_dir_isolated_temp_dir() {
     // app_name is ignored when Custom is set, dir is exactly what we passed
     let cfg = DotCfg::new("ignored_app_name").at_dir(&dir);
     assert_eq!(cfg.dir().unwrap(), dir);
-    assert_eq!(cfg.file_path().unwrap(), dir.join(format!("config.{}", DEFAULT_EXT)));
+    assert_eq!(
+        cfg.file_path().unwrap(),
+        dir.join(format!("config.{}", DEFAULT_EXT))
+    );
 
     let original = TestConfig {
         username: "tayo".into(),
@@ -103,7 +106,7 @@ fn custom_dir_relative_dot_dir() {
     let dot_dir = dir.join(".sendra");
     // In real use this would be `at_dir(".sendra")` from `dir`; we pass absolute
     // to avoid mutating process cwd in parallel tests — same contract.
-    let cfg = DotCfg::new("sendra").yaml().at_dir(&dot_dir);
+    let cfg = DotCfg::new("sendra").at_dir(&dot_dir);
     cfg.set("username", "alice").unwrap();
     assert_eq!(cfg.get("username").unwrap(), "alice");
     assert!(dot_dir.exists());
