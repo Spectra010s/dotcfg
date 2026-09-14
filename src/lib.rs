@@ -54,7 +54,10 @@
 mod env;
 pub mod error;
 
-use std::{fs, path::PathBuf};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use error::DotCfgError;
 use serde::{Deserialize, Serialize};
@@ -164,6 +167,64 @@ impl DotCfg {
     pub fn at_dir(mut self, path: impl Into<PathBuf>) -> Self {
         self.strategy = DirStrategy::Custom(path.into());
         self
+    }
+
+    /// Search ancestors for a project config.
+    ///
+    /// Starts at `std::env::current_dir()` and walks up through `ancestors()`,
+    /// looking for `.{app_name}/{filename}.{ext}`. If found, returns a new
+    /// `DotCfg` with `DirStrategy::Custom` pointing to that directory. If no
+    /// ancestor contains it, returns `Ok(None)` with no fallback to home or XDG.
+    /// This keeps the lookup explicit, matching `dotcfg`'s no-magic policy.
+    ///
+    /// ```rust,no_run
+    /// # use dotcfg::DotCfg;
+    /// let project: Option<DotCfg> = DotCfg::new("mytool").yaml().find_in_ancestors().unwrap();
+    /// match project {
+    ///     Some(cfg) => { let _ = cfg.load::<serde_json::Value>(); }
+    ///     None => { let _ = DotCfg::new("mytool").xdg().yaml(); }
+    /// }
+    /// ```
+    pub fn find_in_ancestors(self) -> Result<Option<Self>, DotCfgError> {
+        let cwd = std::env::current_dir().map_err(DotCfgError::Io)?;
+        self.find_in_ancestors_from(cwd)
+    }
+
+    /// Same as `find_in_ancestors` but starts from an explicit `start` directory.
+    ///
+    /// Useful for testing or when you already have a project path. The `start`
+    /// directory itself is checked first, then its parents up to the filesystem
+    /// root.
+    ///
+    /// ```rust,no_run
+    /// # use dotcfg::DotCfg;
+    /// let cfg = DotCfg::new("mytool").yaml().find_in_ancestors_from("/tmp/my/project/src").unwrap();
+    /// ```
+    pub fn find_in_ancestors_from(self, start: impl AsRef<Path>) -> Result<Option<Self>, DotCfgError> {
+        let ext = match &self.format {
+            #[cfg(feature = "toml")]
+            Format::Toml => "toml",
+            #[cfg(feature = "json")]
+            Format::Json => "json",
+            #[cfg(feature = "yaml")]
+            Format::Yaml => "yaml",
+        };
+        let file_name = format!("{}.{}", self.filename, ext);
+        let dot_dir = format!(".{}", self.app_name);
+        for ancestor in start.as_ref().ancestors() {
+            let dir = ancestor.join(&dot_dir);
+            let file = dir.join(&file_name);
+            if file.is_file() {
+                return Ok(Some(Self {
+                    app_name: self.app_name,
+                    strategy: DirStrategy::Custom(dir),
+                    format: self.format,
+                    filename: self.filename,
+                    env_prefix: self.env_prefix,
+                }));
+            }
+        }
+        Ok(None)
     }
 
     /// Use JSON format
