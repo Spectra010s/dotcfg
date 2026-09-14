@@ -147,16 +147,18 @@ impl DotCfg {
 
     /// Use a custom directory path.
     ///
-    /// Bypasses both `Dot` and `Xdg` resolution — the config file lives
-    /// directly under the given directory. Useful for:
+    /// Bypasses both `Dot` and `Xdg` resolution. The config file lives directly
+    /// under the directory you pass, exactly as given. It can be any path you
+    /// choose — a temp dir, a project dir, a portable dir, or even a home dir
+    /// if you want. No prefix is enforced, so `".mytool"` and `"my-config"`
+    /// both work.
     ///
-    /// - **Isolated testing** with `tempfile::tempdir()`.
-    /// - **Project-local configs** stored inside a repository.
-    /// - **Portable or embedded setups** with non-standard install paths.
+    /// Useful for isolated testing with `tempfile::tempdir()`, project-local
+    /// configs inside a repository, or portable setups with non-standard paths.
     ///
     /// ```rust,no_run
     /// # use dotcfg::DotCfg;
-    /// // /my/project/.config/config.toml
+    /// // /my/project/.config/config.toml — any dir, exactly as given
     /// let cfg = DotCfg::new("mytool").at_dir("/my/project/.config");
     /// ```
     pub fn at_dir(mut self, path: impl Into<PathBuf>) -> Self {
