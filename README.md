@@ -10,7 +10,7 @@ Flexible config management for Rust applications.
 
 Most config crates either lock you into a fixed directory strategy or only handle reading. `dotcfg` gives you full control:
 
-- Choose `~/.toolname/` or `~/.config/toolname/` — your call
+- Choose `~/.toolname/`, `~/.config/toolname/`, or any custom directory — your call
 - TOML, JSON or YAML — feature-gated, include only what you need
 - Load the whole config or get/set individual keys without touching the rest
 - Read and write keys as real types — numbers, bools, arrays, structs — not just strings
@@ -22,6 +22,7 @@ Most config crates either lock you into a fixed directory strategy or only handl
 | :--- | :---: | :---: |
 | **Dot-dir support (`~/.app/`)** | ✅ Built-in default | ❌ (XDG/Native only) |
 | **XDG directory (`~/.config/app/`)** | ✅ via `.xdg()` | ✅ |
+| **Custom directory (`at_dir`)** | ✅ any path, exactly as given | ❌ |
 | **Ad-hoc key get/set by string path** | ✅ (`cfg.get("user.name")`) | ❌ (Full struct only) |
 | **Typed key get/set** | ✅ (`cfg.get_as::<u16>("port")`) | ❌ (Full struct only) |
 | **Full struct load/save** | ✅ | ✅ |
@@ -89,6 +90,14 @@ let cfg = DotCfg::new("mytool").xdg();
 
 // explicit dot (same as default)
 let cfg = DotCfg::new("mytool").dot();
+
+// Custom directory, exactly as given, any path
+let cfg = DotCfg::new("mytool").at_dir("/tmp/my-test-dir");
+// -> /tmp/my-test-dir/config.toml
+
+// Project-local dot dir (like Sendra's .sendra)
+let cfg = DotCfg::new("mytool").at_dir("/my/project/.mytool");
+// -> /my/project/.mytool/config.toml
 ```
 
 ## Format

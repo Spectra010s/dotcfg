@@ -2,7 +2,7 @@
 //!
 //! Flexible config management for Rust applications.
 //!
-//! - Choose between `~/.toolname/` or `~/.config/toolname/`
+//! - Choose between `~/.toolname/`, `~/.config/toolname/`, or a custom directory
 //! - TOML, JSON or YAML format (feature-gated)
 //! - Load, save, get, set — full or per-key
 //! - Typed per-key access with `get_as` / `set_val` (numbers, bools, arrays, structs)
@@ -65,11 +65,14 @@ compile_error!(
 );
 
 /// Where the config folder lives
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DirStrategy {
     /// `~/.toolname/` — like `.cargo`, `.ssh`, `.git`
     Dot,
     /// `~/.config/toolname/` — XDG standard
     Xdg,
+    /// Custom directory path
+    Custom(PathBuf),
 }
 
 /// Config file format
@@ -92,6 +95,9 @@ pub enum Format {
 ///
 /// // ~/.config/mytool/config.toml
 /// let cfg = DotCfg::new("mytool").xdg();
+///
+/// // Custom directory — for testing, project-local configs, etc.
+/// let cfg = DotCfg::new("mytool").at_dir("/tmp/my-test-dir");
 ///
 /// // ~/.mytool/settings.json (requires `json` feature)
 /// #[cfg(feature = "json")]
@@ -136,6 +142,27 @@ impl DotCfg {
     /// Use `~/.toolname/` (default)
     pub fn dot(mut self) -> Self {
         self.strategy = DirStrategy::Dot;
+        self
+    }
+
+    /// Use a custom directory path.
+    ///
+    /// Bypasses both `Dot` and `Xdg` resolution. The config file lives directly
+    /// under the directory you pass, exactly as given. It can be any path you
+    /// choose, like a temp dir, a project dir, a portable dir, or even a home
+    /// dir if you want. No prefix is enforced, so `".mytool"` and `"my-config"`
+    /// both work.
+    ///
+    /// Useful for isolated testing with `tempfile::tempdir()`, project-local
+    /// configs inside a repository, or portable setups with non-standard paths.
+    ///
+    /// ```rust,no_run
+    /// # use dotcfg::DotCfg;
+    /// // /my/project/.config/config.toml — any dir, exactly as given
+    /// let cfg = DotCfg::new("mytool").at_dir("/my/project/.config");
+    /// ```
+    pub fn at_dir(mut self, path: impl Into<PathBuf>) -> Self {
+        self.strategy = DirStrategy::Custom(path.into());
         self
     }
 
@@ -228,7 +255,7 @@ impl DotCfg {
 
     /// Returns the config directory path
     pub fn dir(&self) -> Result<PathBuf, DotCfgError> {
-        let dir = match self.strategy {
+        let dir = match &self.strategy {
             DirStrategy::Dot => {
                 // ~/.toolname/ — Unix convention, we resolve manually
                 let home = home::home_dir().ok_or(DotCfgError::NoHomeDir)?;
@@ -245,6 +272,7 @@ impl DotCfg {
                 .map_err(|_| DotCfgError::NoHomeDir)?;
                 strategy.config_dir()
             }
+            DirStrategy::Custom(path) => path.clone(),
         };
         Ok(dir)
     }
