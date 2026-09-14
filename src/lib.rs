@@ -149,8 +149,8 @@ impl DotCfg {
     ///
     /// Bypasses both `Dot` and `Xdg` resolution. The config file lives directly
     /// under the directory you pass, exactly as given. It can be any path you
-    /// choose — a temp dir, a project dir, a portable dir, or even a home dir
-    /// if you want. No prefix is enforced, so `".mytool"` and `"my-config"`
+    /// choose, like a temp dir, a project dir, a portable dir, or even a home
+    /// dir if you want. No prefix is enforced, so `".mytool"` and `"my-config"`
     /// both work.
     ///
     /// Useful for isolated testing with `tempfile::tempdir()`, project-local
