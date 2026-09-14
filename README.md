@@ -23,6 +23,7 @@ Most config crates either lock you into a fixed directory strategy or only handl
 | **Dot-dir support (`~/.app/`)** | ✅ Built-in default | ❌ (XDG/Native only) |
 | **XDG directory (`~/.config/app/`)** | ✅ via `.xdg()` | ✅ |
 | **Custom directory (`at_dir`)** | ✅ any path, exactly as given | ❌ |
+| **Project discovery (`find_in_ancestors`)** | ✅ walks from current dir, nearest wins | ❌ |
 | **Ad-hoc key get/set by string path** | ✅ (`cfg.get("user.name")`) | ❌ (Full struct only) |
 | **Typed key get/set** | ✅ (`cfg.get_as::<u16>("port")`) | ❌ (Full struct only) |
 | **Full struct load/save** | ✅ | ✅ |
@@ -95,9 +96,17 @@ let cfg = DotCfg::new("mytool").dot();
 let cfg = DotCfg::new("mytool").at_dir("/tmp/my-test-dir");
 // -> /tmp/my-test-dir/config.toml
 
-// Project-local dot dir (like Sendra's .sendra)
+// Project-local dot dir inside the repo
 let cfg = DotCfg::new("mytool").at_dir("/my/project/.mytool");
 // -> /my/project/.mytool/config.toml
+
+// Project discovery walks up from current dir to find .mytool, similar to how git finds .git
+let project: Option<DotCfg> = DotCfg::new("mytool").yaml().find_in_ancestors()?;
+// checks .mytool/config.yaml in current dir, then parents, returns Some with Custom dir or None
+// nearest wins, no fallback to home, you decide what to do if None is returned
+
+// Same but from explicit dir (useful for tests)
+let project = DotCfg::new("mytool").yaml().find_in_ancestors_from("/tmp/my/project/src")?;
 ```
 
 ## Format
