@@ -121,7 +121,10 @@ fn ancestor_nearest_wins() {
 
     // Also check that from inner_root itself we still get inner
     let finder2 = DotCfg::new("mytool");
-    let found2 = finder2.find_in_ancestors_from(&inner_root).unwrap().unwrap();
+    let found2 = finder2
+        .find_in_ancestors_from(&inner_root)
+        .unwrap()
+        .unwrap();
     assert_eq!(found2.dir().unwrap(), inner_dir);
 
     let _ = std::fs::remove_dir_all(&root);
@@ -140,7 +143,10 @@ fn ancestor_returns_none_when_missing() {
 
     let finder = DotCfg::new("mytool");
     let found = finder.find_in_ancestors_from(&nested).unwrap();
-    assert!(found.is_none(), "should be None when no .mytool in ancestors");
+    assert!(
+        found.is_none(),
+        "should be None when no .mytool in ancestors"
+    );
 
     let _ = std::fs::remove_dir_all(&root);
 }

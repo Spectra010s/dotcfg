@@ -179,10 +179,12 @@ impl DotCfg {
     ///
     /// ```rust,no_run
     /// # use dotcfg::DotCfg;
-    /// let project: Option<DotCfg> = DotCfg::new("mytool").yaml().find_in_ancestors().unwrap();
+    /// # use serde::{Deserialize, Serialize};
+    /// # #[derive(Serialize, Deserialize)] struct Cfg { val: String }
+    /// let project: Option<DotCfg> = DotCfg::new("mytool").find_in_ancestors().unwrap();
     /// match project {
-    ///     Some(cfg) => { let _ = cfg.load::<serde_json::Value>(); }
-    ///     None => { let _ = DotCfg::new("mytool").xdg().yaml(); }
+    ///     Some(cfg) => { let _: Option<Cfg> = cfg.load().unwrap(); }
+    ///     None => { let _ = DotCfg::new("mytool").xdg(); }
     /// }
     /// ```
     pub fn find_in_ancestors(self) -> Result<Option<Self>, DotCfgError> {
@@ -198,9 +200,12 @@ impl DotCfg {
     ///
     /// ```rust,no_run
     /// # use dotcfg::DotCfg;
-    /// let cfg = DotCfg::new("mytool").yaml().find_in_ancestors_from("/tmp/my/project/src").unwrap();
+    /// let cfg = DotCfg::new("mytool").find_in_ancestors_from("/tmp/my/project/src").unwrap();
     /// ```
-    pub fn find_in_ancestors_from(self, start: impl AsRef<Path>) -> Result<Option<Self>, DotCfgError> {
+    pub fn find_in_ancestors_from(
+        self,
+        start: impl AsRef<Path>,
+    ) -> Result<Option<Self>, DotCfgError> {
         let ext = match &self.format {
             #[cfg(feature = "toml")]
             Format::Toml => "toml",
