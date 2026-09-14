@@ -103,7 +103,7 @@ fn custom_dir_relative_dot_dir() {
     let dot_dir = dir.join(".sendra");
     // In real use this would be `at_dir(".sendra")` from `dir`; we pass absolute
     // to avoid mutating process cwd in parallel tests — same contract.
-    let cfg = DotCfg::new("sendra").yaml().at_dir(&dot_dir);
+    let cfg = DotCfg::new("sendra").at_dir(&dot_dir);
     cfg.set("username", "alice").unwrap();
     assert_eq!(cfg.get("username").unwrap(), "alice");
     assert!(dot_dir.exists());
