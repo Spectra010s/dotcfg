@@ -1,0 +1,71 @@
+---
+import "../styles/global.css";
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = "dotcfg — Rust configuration, your way",
+  description = "Documentation for dotcfg, flexible configuration management for Rust applications.",
+} = Astro.props;
+
+const groups = [
+  {
+    label: "Basics",
+    links: [
+      ["Getting started", "/getting-started"],
+      ["Directory strategies", "/directory-strategies"],
+      ["Formats", "/formats"],
+    ],
+  },
+  {
+    label: "Configuration",
+    links: [
+      ["Loading & saving", "/loading-saving"],
+      ["Key access", "/key-access"],
+      ["Environment overrides", "/environment"],
+      ["Examples", "/examples"],
+    ],
+  },
+];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="description" content={description} />
+    <title>{title}</title>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/"><span>dot</span>cfg</a>
+      <nav class="toplinks">
+        <a class="optional" href="https://crates.io/crates/dotcfg">crates.io</a>
+        <a href="https://github.com/Spectra010s/dotcfg">GitHub</a>
+      </nav>
+    </header>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="sidebar-scroll">
+          {groups.map((group) => (
+            <section class="nav-group">
+              <p class="sidebar-title">{group.label}</p>
+              <nav>
+                {group.links.map(([label, href]) => <a href={href}>{label}</a>)}
+              </nav>
+            </section>
+          ))}
+        </div>
+        <nav class="sidebar-external" aria-label="External documentation links">
+          <a href="https://docs.rs/dotcfg">API reference <span>↗</span></a>
+          <a href="https://crates.io/crates/dotcfg">crates.io <span>↗</span></a>
+        </nav>
+      </aside>
+      <main><slot /></main>
+    </div>
+  </body>
+</html>

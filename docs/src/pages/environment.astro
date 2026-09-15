@@ -1,0 +1,30 @@
+---
+import DocsLayout from "../layouts/DocsLayout.astro";
+---
+<DocsLayout title="Environment overrides — dotcfg" description="Override file values with prefixed environment variables while keeping file writes explicit.">
+  <article class="prose">
+    <span class="eyebrow">Configuration</span><h1>Environment overrides</h1>
+    <p class="lead">Environment overrides are opt-in. Once enabled, per-key reads check the environment first and fall back to the config file only when the matching variable is absent.</p>
+
+    <h2>Enable a prefix</h2>
+    <div class="code-window"><div class="code-header"><span>Rust</span></div><pre><code>let cfg = DotCfg::new("mytool")
+    .with_env_prefix("myapp");
+
+let port: u16 = cfg.get_as("port")?;</code></pre></div>
+    <p>The key <code>port</code> maps to <code>MYAPP_PORT</code>. Nested dots become underscores, so <code>user.name</code> maps to <code>MYAPP_USER_NAME</code>. Both the prefix and key are uppercased for the environment-variable name.</p>
+
+    <h2>Precedence</h2>
+    <div class="precedence"><span>Environment variable</span><b>→</b><span>Config file</span></div>
+    <p>If <code>MYAPP_PORT</code> exists, its value wins. If it is absent, dotcfg reads <code>port</code> from the file. A malformed environment value is an error—it is not silently ignored in favor of the file.</p>
+
+    <h2>Typed environment values</h2>
+    <p>Environment variables start as strings, so <code>get_as()</code> interprets them for the requested Rust type.</p>
+    <div class="choice-grid"><div><strong>Numbers</strong><p>Parsed using Rust's normal string parsing.</p></div><div><strong>Booleans</strong><p><code>true</code>/<code>false</code> and <code>1</code>/<code>0</code>, case-insensitive.</p></div><div><strong>Sequences</strong><p>Comma-separated: <code>MYAPP_TAGS=cli,fast</code>.</p></div><div><strong>Option&lt;T&gt;</strong><p>A variable that exists is treated as <code>Some(T)</code>.</p></div></div>
+
+    <h2>Structs and maps</h2>
+    <p>A single environment variable cannot represent a struct or map. Express those values as nested keys instead—for example, use <code>MYAPP_SERVER_HOST</code> for <code>server.host</code>.</p>
+
+    <h2>Writes never touch the environment</h2>
+    <p><code>set()</code> and <code>set_val()</code> always write to the config file. Environment variables only participate in reads, keeping persistence explicit and predictable.</p>
+  </article>
+</DocsLayout>

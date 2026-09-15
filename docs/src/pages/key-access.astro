@@ -1,0 +1,34 @@
+---
+import DocsLayout from "../layouts/DocsLayout.astro";
+---
+<DocsLayout title="Key access — dotcfg" description="Read and update individual flat or nested config values, with typed access when needed.">
+  <article class="prose">
+    <span class="eyebrow">Core API</span><h1>Key access</h1>
+    <p class="lead">You do not always need to deserialize and rewrite the whole config. dotcfg can read or update one key while preserving the rest of the file.</p>
+
+    <h2>Strings with <code>get()</code> and <code>set()</code></h2>
+    <div class="code-window"><div class="code-header"><span>Rust</span></div><pre><code>cfg.set("username", "tayo")?;
+let username = cfg.get("username")?;</code></pre></div>
+    <p><code>set()</code> creates the file and parent directory if necessary. When a file already exists, other keys are preserved.</p>
+
+    <h2>Nested keys</h2>
+    <p>Use dot-separated paths for nested values. Intermediate maps/tables are created when writing a nested key.</p>
+    <div class="code-window"><div class="code-header"><span>Rust</span></div><pre><code>cfg.set("user.name", "tayo")?;
+let name = cfg.get("user.name")?;</code></pre></div>
+
+    <h2>Typed values with <code>get_as()</code></h2>
+    <p><code>get()</code> returns a string. When the value is naturally a number, boolean, list, or another Serde-compatible type, ask dotcfg for that Rust type directly.</p>
+    <div class="code-window"><div class="code-header"><span>Rust</span></div><pre><code>let port: u16 = cfg.get_as("port")?;
+let plugins: Vec&lt;String&gt; = cfg.get_as("plugins")?;
+let auto_update: bool = cfg.get_as("features.auto_update")?;</code></pre></div>
+    <p>The value is deserialized from the config format's native value representation rather than being converted to a string and parsed again.</p>
+
+    <h2>Typed writes with <code>set_val()</code></h2>
+    <div class="code-window"><div class="code-header"><span>Rust</span></div><pre><code>cfg.set_val("port", 8080u16)?;
+cfg.set_val("plugins", vec!["fmt", "lint"])?;
+cfg.set_val("features.auto_update", true)?;</code></pre></div>
+    <p>This matters because <code>set("port", "8080")</code> is a string-oriented write, while <code>set_val("port", 8080u16)</code> stores a native numeric value.</p>
+
+    <div class="note"><strong>A useful rule</strong><p>Use <code>get/set</code> for string settings and <code>get_as/set_val</code> when the Rust type matters. Use <code>load/save</code> when you are working with the whole configuration struct.</p></div>
+  </article>
+</DocsLayout>
