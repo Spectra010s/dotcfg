@@ -11,15 +11,24 @@ const {
   description = "Documentation for dotcfg, flexible configuration management for Rust applications.",
 } = Astro.props;
 
-const sections = [
-  ["Getting started", "/getting-started"],
-  ["Directory strategies", "/directory-strategies"],
-  ["Formats", "/formats"],
-  ["Loading & saving", "/loading-saving"],
-  ["Key access", "/key-access"],
-  ["Environment overrides", "/environment"],
-  ["Examples", "/examples"],
-  ["API reference", "https://docs.rs/dotcfg"],
+const groups = [
+  {
+    label: "Basics",
+    links: [
+      ["Getting started", "/getting-started"],
+      ["Directory strategies", "/directory-strategies"],
+      ["Formats", "/formats"],
+    ],
+  },
+  {
+    label: "Configuration",
+    links: [
+      ["Loading & saving", "/loading-saving"],
+      ["Key access", "/key-access"],
+      ["Environment overrides", "/environment"],
+      ["Examples", "/examples"],
+    ],
+  },
 ];
 ---
 
@@ -41,9 +50,19 @@ const sections = [
     </header>
     <div class="shell">
       <aside class="sidebar">
-        <p class="sidebar-title">Documentation</p>
-        <nav>
-          {sections.map(([label, href]) => <a href={href}>{label}</a>)}
+        <div class="sidebar-scroll">
+          {groups.map((group) => (
+            <section class="nav-group">
+              <p class="sidebar-title">{group.label}</p>
+              <nav>
+                {group.links.map(([label, href]) => <a href={href}>{label}</a>)}
+              </nav>
+            </section>
+          ))}
+        </div>
+        <nav class="sidebar-external" aria-label="External documentation links">
+          <a href="https://docs.rs/dotcfg">API reference <span>↗</span></a>
+          <a href="https://crates.io/crates/dotcfg">crates.io <span>↗</span></a>
         </nav>
       </aside>
       <main><slot /></main>
