@@ -1,0 +1,29 @@
+---
+import DocsLayout from "../layouts/DocsLayout.astro";
+
+const pages = {
+  "getting-started": ["Getting started", "Install dotcfg and load your first Rust configuration."],
+  "directory-strategies": ["Directory strategies", "Choose where dotcfg looks for and stores application configuration."],
+  formats: ["Configuration formats", "Use TOML, JSON, or YAML through feature-gated format support."],
+  "loading-saving": ["Loading & saving", "Load optional or required configuration and persist typed structures."],
+  "key-access": ["Key access", "Read and update individual flat or nested values, including typed values."],
+  environment: ["Environment overrides", "Let prefixed environment variables override values from configuration files."],
+  examples: ["Examples", "Practical dotcfg patterns for Rust applications and command-line tools."],
+} as const;
+
+export function getStaticPaths() {
+  return Object.entries(pages).map(([slug, page]) => ({ params: { slug }, props: { page } }));
+}
+
+const { page } = Astro.props;
+const [title, description] = page;
+---
+<DocsLayout title={`${title} — dotcfg`} description={description}>
+  <article>
+    <span class="eyebrow">dotcfg documentation</span>
+    <h1>{title}</h1>
+    <p class="lead">{description}</p>
+    <h2>Documentation in progress</h2>
+    <p>This section is part of the documentation structure and will be filled out in the corresponding documentation task.</p>
+  </article>
+</DocsLayout>
