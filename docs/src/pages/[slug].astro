@@ -1,7 +1,9 @@
 ---
 import DocsLayout from "../layouts/DocsLayout.astro";
 
-const pages = {
+type Page = readonly [title: string, description: string];
+
+const pages: Record<string, Page> = {
   "getting-started": ["Getting started", "Install dotcfg and load your first Rust configuration."],
   "directory-strategies": ["Directory strategies", "Choose where dotcfg looks for and stores application configuration."],
   formats: ["Configuration formats", "Use TOML, JSON, or YAML through feature-gated format support."],
@@ -9,13 +11,13 @@ const pages = {
   "key-access": ["Key access", "Read and update individual flat or nested values, including typed values."],
   environment: ["Environment overrides", "Let prefixed environment variables override values from configuration files."],
   examples: ["Examples", "Practical dotcfg patterns for Rust applications and command-line tools."],
-} as const;
+};
 
 export function getStaticPaths() {
   return Object.entries(pages).map(([slug, page]) => ({ params: { slug }, props: { page } }));
 }
 
-const { page } = Astro.props;
+const { page } = Astro.props as { page: Page };
 const [title, description] = page;
 ---
 <DocsLayout title={`${title} — dotcfg`} description={description}>
