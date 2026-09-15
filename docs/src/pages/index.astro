@@ -6,12 +6,16 @@ const topics = [
   ["Typed key access", "Read and write individual values as Rust types without replacing the whole config.", "/key-access"],
   ["Environment overrides", "Layer environment variables over file configuration for CLI and deployment workflows.", "/environment"],
 ];
+const example = `use dotcfg::DotCfg;
+
+let cfg = DotCfg::new("mytool");
+let config: Option<Config> = cfg.load()?;`;
 ---
 <DocsLayout>
   <span class="eyebrow">Flexible configuration for Rust</span>
   <h1>Config that fits your application.</h1>
   <p class="lead">dotcfg handles where configuration lives, how it is encoded, and how you read it — without forcing one directory strategy or one access pattern.</p>
-  <pre><code>{`use dotcfg::DotCfg;\n\nlet cfg = DotCfg::new("mytool");\nlet config: Option<Config> = cfg.load()?;`}</code></pre>
+  <pre><code>{example}</code></pre>
   <div class="cards">
     {topics.map(([title, description, href]) => <a class="card" href={href}><strong>{title}</strong><p>{description}</p></a>)}
   </div>
