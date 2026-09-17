@@ -1,6 +1,7 @@
 ---
 import "../styles/global.css";
 import githubData from "../data/github.json";
+import { createDocsSchema, createHomeSchema } from "../lib/schema";
 
 interface Props {
   title?: string;
@@ -13,6 +14,11 @@ const {
 } = Astro.props;
 
 const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
+const canonicalUrl = new URL(currentPath === "/" ? "/" : currentPath, Astro.site);
+const pageTitle = title.replace(/\s+[—-]\s+dotcfg$/, "");
+const schema = currentPath === "/"
+  ? createHomeSchema(description)
+  : createDocsSchema({ title: pageTitle, description, path: currentPath });
 const starCount = Number.isFinite(githubData.stars) && githubData.stars > 0 ? githubData.stars : null;
 const groups = [
   { label: "Basics", links: [["Getting started", "/getting-started"], ["Directory strategies", "/directory-strategies"], ["Formats", "/formats"]] },
@@ -26,8 +32,22 @@ const groups = [
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
-    <meta name="description" content={description} />
     <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href={canonicalUrl} />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="dotcfg" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalUrl} />
+
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+
+    <script type="application/ld+json" set:html={JSON.stringify(schema)} />
   </head>
   <body>
     <header class="topbar">
