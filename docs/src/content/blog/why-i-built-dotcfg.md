@@ -6,6 +6,7 @@ tags:
   - rust
   - configuration
   - dotcfg
+version: "0.3.0"
 ---
 
 When building command-line tools or desktop applications in Rust, one of the first questions you face is: **where and how should I store user configuration?**
@@ -90,6 +91,25 @@ You can also choose a different filename:
 let cfg = DotCfg::new("mytool").filename("settings");
 ```
 
+With dotcfg 0.3.0, you can point configuration at an exact directory when neither of those strategies fits:
+
+```rust
+let cfg = DotCfg::new("mytool")
+    .at_dir("/my/project/.config");
+```
+
+For project-aware tools, dotcfg can also search upward for configuration instead of requiring the caller to already know the project root:
+
+```rust
+let cfg = DotCfg::new("mytool");
+
+if let Some(project_cfg) = cfg.find_in_ancestors()? {
+    // use the discovered project configuration
+}
+```
+
+`find_in_ancestors_from()` provides the same discovery starting from an explicit path. If discovery finds nothing, it returns `Ok(None)`, leaving the fallback decision to the application.
+
 ## A small CLI example
 
 The full-struct and key-level APIs can live together. You can load a complete configuration when that is convenient and still update an individual setting later.
@@ -118,6 +138,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 I built dotcfg around that idea: configuration APIs should give you useful defaults without taking control away from you.
 
-You can load a whole struct or work with one key. You can choose a directory strategy and enable the formats your application actually needs — TOML, JSON, YAML, or more than one of them.
+You can load a whole struct or work with one key. You can use a traditional dot-directory, XDG, an exact directory, or project config discovery. And you can enable the formats your application actually needs — TOML, JSON, YAML, or more than one of them.
 
 If that sounds useful for something you're building, check out **dotcfg on GitHub** or the rest of the documentation.
