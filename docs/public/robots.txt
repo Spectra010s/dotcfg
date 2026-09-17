@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://dotcfg.pxxl.click/sitemap.xml
+Sitemap: https://dotcfg.pxxl.click/sitemap-index.xml
