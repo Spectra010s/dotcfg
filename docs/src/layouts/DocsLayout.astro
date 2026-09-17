@@ -119,37 +119,6 @@ const groups = [
       backdrop?.addEventListener('click', () => setNavOpen(false));
       nav?.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => setNavOpen(false)));
       document.addEventListener('keydown', (event) => { if (event.key === 'Escape') setNavOpen(false); });
-
-      document.querySelectorAll('.code-window').forEach((window, index) => {
-        const header = window.querySelector('.code-header');
-        const code = window.querySelector('pre code');
-        if (!header || !code) return;
-
-        let button = header.querySelector('.copy-button');
-        if (!button) {
-          button = document.createElement('button');
-          button.type = 'button';
-          button.className = 'copy-button';
-          button.textContent = 'Copy';
-          header.appendChild(button);
-        }
-
-        if (!code.id) code.id = `code-block-${index}`;
-        button.dataset.copyTarget = code.id;
-      });
-
-      document.querySelectorAll('.copy-button').forEach((button) => {
-        if (button.dataset.copyBound === 'true') return;
-        button.dataset.copyBound = 'true';
-        button.addEventListener('click', async () => {
-          const target = document.getElementById(button.dataset.copyTarget || '');
-          if (!target) return;
-          await navigator.clipboard.writeText(target.textContent || '');
-          const original = button.textContent;
-          button.textContent = 'Copied';
-          setTimeout(() => { button.textContent = original; }, 1200);
-        });
-      });
     </script>
   </body>
 </html>
