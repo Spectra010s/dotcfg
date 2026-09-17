@@ -15,6 +15,7 @@ const {
 
 const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
 const canonicalUrl = new URL(currentPath === "/" ? "/" : currentPath, Astro.site);
+const socialImageUrl = new URL("/brand/og.png", Astro.site);
 const pageTitle = title.replace(/\s+[—-]\s+dotcfg$/, "");
 const schema = currentPath === "/"
   ? createHomeSchema(description)
@@ -37,15 +38,26 @@ const groups = [
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href={canonicalUrl} />
 
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="dotcfg" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:image" content={socialImageUrl} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="600" />
+    <meta property="og:image:alt" content="dotcfg — Rust configuration, your way" />
 
-    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={socialImageUrl} />
+    <meta name="twitter:image:alt" content="dotcfg — Rust configuration, your way" />
 
     <script type="application/ld+json" set:html={JSON.stringify(schema)} />
   </head>
