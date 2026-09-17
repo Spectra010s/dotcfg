@@ -1,5 +1,6 @@
 ---
 import DocsLayout from "../layouts/DocsLayout.astro";
+import CodeBlock from "../components/CodeBlock.astro";
 ---
 <DocsLayout title="Environment overrides — dotcfg" description="Override file values with prefixed environment variables while keeping file writes explicit.">
   <article class="prose">
@@ -7,10 +8,7 @@ import DocsLayout from "../layouts/DocsLayout.astro";
     <p class="lead">Environment overrides are opt-in. Once enabled, per-key reads check the environment first and fall back to the config file only when the matching variable is absent.</p>
 
     <h2>Enable a prefix</h2>
-    <div class="code-window"><div class="code-header"><span>Rust</span></div><pre><code>let cfg = DotCfg::new("mytool")
-    .with_env_prefix("myapp");
-
-let port: u16 = cfg.get_as("port")?;</code></pre></div>
+    <CodeBlock label="Rust" code={'let cfg = DotCfg::new("mytool")\n    .with_env_prefix("myapp");\n\nlet port: u16 = cfg.get_as("port")?;'} />
     <p>The key <code>port</code> maps to <code>MYAPP_PORT</code>. Nested dots become underscores, so <code>user.name</code> maps to <code>MYAPP_USER_NAME</code>. Both the prefix and key are uppercased for the environment-variable name.</p>
 
     <h2>Precedence</h2>
