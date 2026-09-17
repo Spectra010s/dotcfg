@@ -1,5 +1,6 @@
 ---
 import "../styles/global.css";
+import githubData from "../data/github.json";
 
 interface Props {
   title?: string;
@@ -12,6 +13,7 @@ const {
 } = Astro.props;
 
 const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
+const starCount = Number.isFinite(githubData.stars) && githubData.stars > 0 ? githubData.stars : null;
 const groups = [
   {
     label: "Basics",
@@ -47,9 +49,15 @@ const groups = [
   <body>
     <header class="topbar">
       <a class="brand" href="/"><span>dot</span>cfg</a>
-      <button class="menu-button" type="button" aria-label="Open documentation navigation" aria-controls="mobile-nav" aria-expanded="false" data-menu-open>
-        <span></span><span></span><span></span>
-      </button>
+      <div class="header-actions">
+        <a class="github-star" href="https://github.com/Spectra010s/dotcfg" aria-label={starCount ? `Star dotcfg on GitHub. ${starCount} stars.` : "Star dotcfg on GitHub"}>
+          <span class="star-icon" aria-hidden="true">☆{starCount && <span class="star-count">{starCount}</span>}</span>
+          <span class="star-label"><span class="star-desktop">Star on GitHub</span><span class="star-mobile">Star</span></span>
+        </a>
+        <button class="menu-button" type="button" aria-label="Open documentation navigation" aria-controls="mobile-nav" aria-expanded="false" data-menu-open>
+          <span></span><span></span><span></span>
+        </button>
+      </div>
     </header>
 
     <div class="nav-backdrop" data-nav-backdrop></div>
