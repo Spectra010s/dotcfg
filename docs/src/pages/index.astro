@@ -49,7 +49,7 @@ const examples = [
         <button class="tab" type="button" data-tab="json">JSON</button>
         <button class="tab" type="button" data-tab="yaml">YAML</button>
       </div>
-      <CodeBlock label="Cargo.toml" code={'dotcfg = "0.2.0"'} compact />
+      <CodeBlock label="Cargo.toml" code={'dotcfg = "0.3.0"'} compact />
     </div>
   </section>
 
@@ -82,9 +82,9 @@ const examples = [
 
   <script is:inline>
     const installValues = {
-      toml: 'dotcfg = "0.2.0"',
-      json: 'dotcfg = { version = "0.2.0", features = ["json"] }',
-      yaml: 'dotcfg = { version = "0.2.0", features = ["yaml"] }',
+      toml: 'dotcfg = "0.3.0"',
+      json: 'dotcfg = { version = "0.3.0", features = ["json"] }',
+      yaml: 'dotcfg = { version = "0.3.0", features = ["yaml"] }',
     };
 
     document.querySelectorAll('[data-install-tabs] .tab').forEach((button) => {
