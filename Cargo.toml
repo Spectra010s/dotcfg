@@ -1,9 +1,18 @@
 [package]
 name = "dotcfg"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 description = "Flexible config management for Rust applications"
 license = "MIT OR Apache-2.0"
+include = [
+    "src/**/*",
+    "tests/**/*",
+    "examples/**/*",
+    "README.md",
+    "CONTRIBUTING.md",
+    "LICENSE-*",
+    "CODE_OF_CONDUCT.md",
+]
 keywords = ["config", "configuration", "toml", "json", "yaml"]
 authors = ["Adeloye Adetayo <spectra010s@gmail.com>"]
 repository = "https://github.com/Spectra010s/dotcfg"

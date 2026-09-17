@@ -8,20 +8,20 @@ import CodeBlock from "../components/CodeBlock.astro";
     <p class="lead">dotcfg keeps the API the same while the file format changes. TOML is enabled by default; JSON and YAML are opt-in Cargo features.</p>
 
     <h2>TOML — default</h2>
-    <CodeBlock label="Cargo.toml" code={'[dependencies]\ndotcfg = "0.2.0"'} />
+    <CodeBlock label="Cargo.toml" code={'[dependencies]\ndotcfg = "0.3.0"'} />
     <p><code>DotCfg::new("mytool")</code> selects TOML when the default features are enabled. You can also call <code>.toml()</code> explicitly.</p>
 
     <h2>JSON</h2>
-    <CodeBlock label="Cargo.toml" code={'[dependencies]\ndotcfg = { version = "0.2.0", features = ["json"] }'} />
+    <CodeBlock label="Cargo.toml" code={'[dependencies]\ndotcfg = { version = "0.3.0", features = ["json"] }'} />
     <CodeBlock label="Rust" code={'let cfg = DotCfg::new("mytool").json();\n// ~/.mytool/config.json'} />
 
     <h2>YAML</h2>
-    <CodeBlock label="Cargo.toml" code={'[dependencies]\ndotcfg = { version = "0.2.0", features = ["yaml"] }'} />
+    <CodeBlock label="Cargo.toml" code={'[dependencies]\ndotcfg = { version = "0.3.0", features = ["yaml"] }'} />
     <CodeBlock label="Rust" code={'let cfg = DotCfg::new("mytool").yaml();\n// ~/.mytool/config.yaml'} />
 
     <h2>Enable several formats</h2>
     <p>Cargo features are additive. Enabling JSON does not disable the default TOML feature. If your program needs all three formats, enable JSON and YAML alongside the default.</p>
-    <CodeBlock label="Cargo.toml" code={'dotcfg = { version = "0.2.0", features = ["json", "yaml"] }'} />
+    <CodeBlock label="Cargo.toml" code={'dotcfg = { version = "0.3.0", features = ["json", "yaml"] }'} />
 
     <h2>Use your own filename</h2>
     <p><code>.filename()</code> accepts the filename without an extension. dotcfg adds the extension that matches the selected format.</p>

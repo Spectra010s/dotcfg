@@ -16,7 +16,7 @@ const software = {
   name: "dotcfg",
   applicationCategory: "DeveloperApplication",
   operatingSystem: "Cross-platform",
-  softwareVersion: "0.2.0",
+  softwareVersion: "0.3.0",
   description: "Flexible config management for Rust applications.",
   programmingLanguage: "Rust",
   author: creator,
