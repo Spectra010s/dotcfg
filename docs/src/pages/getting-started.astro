@@ -2,7 +2,7 @@
 import DocsLayout from "../layouts/DocsLayout.astro";
 import CodeBlock from "../components/CodeBlock.astro";
 const dependencyConfig = `[dependencies]
-dotcfg = "0.2.0"
+dotcfg = "0.3.0"
 serde = { version = "1", features = ["derive"] }`;
 const firstConfig = `use dotcfg::DotCfg;
 use serde::{Deserialize, Serialize};
@@ -31,7 +31,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     <p>TOML support is enabled by default. You also need <code>serde</code> with its derive feature so Rust can turn your struct into config data and back again.</p>
     <CodeBlock label="Cargo.toml" code={dependencyConfig} />
 
-    <div class="note"><strong>Coming in 0.3.0</strong><p>The docs already cover custom directories and ancestor discovery because those APIs are in the current source and are planned for the next release. Installation stays on the published <code>0.2.0</code> version until 0.3.0 ships.</p></div>
+    <div class="note"><strong>New in 0.3.0</strong><p>dotcfg 0.3.0 adds custom configuration directories and project config discovery. See <a class="inline-link" href="/directory-strategies">Directory strategies</a> for <code>at_dir()</code>, <code>find_in_ancestors()</code>, and <code>find_in_ancestors_from()</code>.</p></div>
 
     <h2>2. Define your configuration</h2>
     <p><code>Serialize</code> means the struct can be written to a file. <code>Deserialize</code> means it can be reconstructed from that file. <code>Default</code> is only needed when you want <code>load_or_default()</code> to create a starting config automatically.</p>
