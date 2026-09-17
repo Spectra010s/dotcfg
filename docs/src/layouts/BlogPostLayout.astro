@@ -1,23 +1,42 @@
 ---
 import DocsLayout from "./DocsLayout.astro";
+import { createBlogPostSchema } from "../lib/schema";
 
 interface Props {
   title: string;
   description: string;
+  path: string;
   publishedAt: Date;
+  modifiedAt?: Date;
   tags?: string[];
   version?: string;
 }
 
-const { title, description, publishedAt, tags = [], version } = Astro.props;
+const { title, description, path, publishedAt, modifiedAt, tags = [], version } = Astro.props;
 const formattedDate = publishedAt.toLocaleDateString("en", {
   year: "numeric",
   month: "long",
   day: "numeric",
 });
+const schema = createBlogPostSchema({
+  title,
+  description,
+  path,
+  publishedAt,
+  modifiedAt,
+  tags,
+  version,
+});
 ---
 
-<DocsLayout title={`${title} — dotcfg`} description={description}>
+<DocsLayout
+  title={`${title} — dotcfg`}
+  description={description}
+  schema={schema}
+  ogType="article"
+  publishedAt={publishedAt}
+  modifiedAt={modifiedAt}
+>
   <article class="blog-post">
     <header class="blog-post-header">
       <a class="blog-back" href="/blog">← Blog</a>
