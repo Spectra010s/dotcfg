@@ -1,5 +1,6 @@
 ---
 import DocsLayout from "../layouts/DocsLayout.astro";
+import CodeBlock from "../components/CodeBlock.astro";
 const defaultExample = `#[derive(Serialize, Deserialize, Default)]
 struct AppConfig {
     theme: String,
@@ -24,19 +25,19 @@ if let Some(config) = config {
 
     <h2>Optional: <code>load()</code></h2>
     <p>Use this when your application can run without a saved config. A missing file becomes <code>Ok(None)</code>; I/O and parse failures still return errors.</p>
-    <div class="code-window"><div class="code-header"><span>Rust</span></div><pre><code>{optionalExample}</code></pre></div>
+    <CodeBlock label="Rust" code={optionalExample} />
 
     <h2>Required: <code>load_or_error()</code></h2>
     <p>Use this when the application must be configured before it can continue.</p>
-    <div class="code-window"><div class="code-header"><span>Rust</span></div><pre><code>let config: AppConfig = cfg.load_or_error()?;</code></pre></div>
+    <CodeBlock label="Rust" code={'let config: AppConfig = cfg.load_or_error()?;'} />
 
     <h2>Create defaults: <code>load_or_default()</code></h2>
     <p>This requires your type to implement <code>Default</code>. If the file is missing, dotcfg constructs <code>T::default()</code>, saves it, and returns that value.</p>
-    <div class="code-window"><div class="code-header"><span>Rust</span></div><pre><code>{defaultExample}</code></pre></div>
+    <CodeBlock label="Rust" code={defaultExample} />
 
     <h2>Save a complete config</h2>
     <p><code>save()</code> serializes your struct in the selected format. The config directory is created automatically when it does not exist.</p>
-    <div class="code-window"><div class="code-header"><span>Rust</span></div><pre><code>{saveExample}</code></pre></div>
+    <CodeBlock label="Rust" code={saveExample} />
 
     <div class="note"><strong>Whole config vs one key</strong><p>Use <code>save()</code> when your program already has the complete config struct. If you only need to change one field while preserving everything else, use <a class="inline-link" href="/key-access"><code>set()</code> or <code>set_val()</code></a>.</p></div>
   </article>
