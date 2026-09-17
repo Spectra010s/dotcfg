@@ -1,0 +1,53 @@
+---
+import DocsLayout from "../layouts/DocsLayout.astro";
+import CodeBlock from "../components/CodeBlock.astro";
+const dependencyConfig = `[dependencies]
+dotcfg = "0.2.0"
+serde = { version = "1", features = ["derive"] }`;
+const firstConfig = `use dotcfg::DotCfg;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+struct AppConfig {
+    theme: String,
+    port: u16,
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let cfg = DotCfg::new("myapp");
+    let config: AppConfig = cfg.load_or_default()?;
+
+    println!("{config:#?}");
+    println!("Stored at {:?}", cfg.file_path()?);
+    Ok(())
+}`;
+---
+<DocsLayout title="Getting started — dotcfg" description="Install dotcfg and load your first Rust configuration.">
+  <article class="prose">
+    <span class="eyebrow">Basics</span><h1>Getting started</h1>
+    <p class="lead">If you can define a Rust struct, dotcfg can store it as configuration. This guide starts from the Rust pieces too, so you do not need to already know how Serde-based config libraries work.</p>
+
+    <h2>1. Add dotcfg</h2>
+    <p>TOML support is enabled by default. You also need <code>serde</code> with its derive feature so Rust can turn your struct into config data and back again.</p>
+    <CodeBlock label="Cargo.toml" code={dependencyConfig} />
+
+    <div class="note"><strong>Coming in 0.3.0</strong><p>The docs already cover custom directories and ancestor discovery because those APIs are in the current source and are planned for the next release. Installation stays on the published <code>0.2.0</code> version until 0.3.0 ships.</p></div>
+
+    <h2>2. Define your configuration</h2>
+    <p><code>Serialize</code> means the struct can be written to a file. <code>Deserialize</code> means it can be reconstructed from that file. <code>Default</code> is only needed when you want <code>load_or_default()</code> to create a starting config automatically.</p>
+    <CodeBlock label="src/main.rs" code={firstConfig} />
+
+    <h2>3. Understand what just happened</h2>
+    <p><code>DotCfg::new("myapp")</code> uses the default dot-directory strategy. With TOML and the default filename, the config resolves to <code>~/.myapp/config.toml</code>. <code>load_or_default()</code> loads that file when it exists; otherwise it saves <code>AppConfig::default()</code> first and returns it.</p>
+
+    <h2>Choose how missing config behaves</h2>
+    <div class="choice-grid">
+      <div><code>load()</code><strong>Optional</strong><p>Returns <code>Ok(None)</code> when no file exists.</p></div>
+      <div><code>load_or_error()</code><strong>Required</strong><p>Returns a not-found error when setup is required first.</p></div>
+      <div><code>load_or_default()</code><strong>Create defaults</strong><p>Creates and saves <code>T::default()</code> when missing.</p></div>
+    </div>
+
+    <h2>Where next?</h2>
+    <p>Learn <a class="inline-link" href="/directory-strategies">where dotcfg can store files</a>, or jump to <a class="inline-link" href="/loading-saving">loading and saving</a> for the full behavior of each method.</p>
+  </article>
+</DocsLayout>

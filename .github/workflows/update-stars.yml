@@ -1,0 +1,68 @@
+name: Update docs star count
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-docs-star-count
+  cancel-in-progress: false
+
+jobs:
+  update-stars:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Fetch star count
+        id: stars
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          stars="$(gh api "repos/${GH_REPOSITORY}" --jq '.stargazers_count')"
+
+          if ! [[ "$stars" =~ ^[0-9]+$ ]]; then
+            echo "Invalid star count returned by GitHub: $stars" >&2
+            exit 1
+          fi
+
+          echo "count=$stars" >> "$GITHUB_OUTPUT"
+
+      - name: Update star data
+        env:
+          STAR_COUNT: ${{ steps.stars.outputs.count }}
+        run: |
+          set -euo pipefail
+          file="docs/src/data/github.json"
+          current="$(jq -r '.stars // 0' "$file")"
+
+          if [ "$current" = "$STAR_COUNT" ]; then
+            echo "Star count is already $STAR_COUNT; nothing to update."
+            exit 0
+          fi
+
+          jq --argjson stars "$STAR_COUNT" '.stars = $stars' "$file" > "$file.tmp"
+          mv "$file.tmp" "$file"
+          echo "Updated star count: $current -> $STAR_COUNT"
+
+      - name: Commit star count change
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet -- docs/src/data/github.json; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/src/data/github.json
+          git commit -m "chore(docs): update GitHub star count"
+          git push
