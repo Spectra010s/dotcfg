@@ -1,10 +1,18 @@
-# dotcfg
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="./docs/public/brand/logo-horizontal-dark.png">
+    <source media="(prefers-color-scheme: light)" srcset="./docs/public/brand/logo-horizontal-light.png">
+    <img alt="dotcfg" src="./docs/public/brand/logo-horizontal-light.png" width="360">
+  </picture>
+</p>
 
-[![CI](https://github.com/Spectra010s/dotcfg/actions/workflows/ci.yml/badge.svg)](https://github.com/Spectra010s/dotcfg/actions/workflows/ci.yml)
-[![crates.io](https://img.shields.io/crates/v/dotcfg)](https://crates.io/crates/dotcfg)
-[![docs.rs](https://img.shields.io/docsrs/dotcfg)](https://docs.rs/dotcfg)
+<p align="center">Flexible config management for Rust applications.</p>
 
-Flexible config management for Rust applications.
+<p align="center">
+  <a href="https://github.com/Spectra010s/dotcfg/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Spectra010s/dotcfg/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://crates.io/crates/dotcfg"><img alt="crates.io" src="https://img.shields.io/crates/v/dotcfg"></a>
+  <a href="https://docs.rs/dotcfg"><img alt="docs.rs" src="https://img.shields.io/docsrs/dotcfg"></a>
+</p>
 
 ## Why dotcfg?
 
@@ -34,16 +42,16 @@ Most config crates either lock you into a fixed directory strategy or only handl
 
 ```toml
 # TOML only (default)
-dotcfg = "0.1"
+dotcfg = "0.3"
 
 # JSON only
-dotcfg = { version = "0.1", default-features = false, features = ["json"] }
+dotcfg = { version = "0.3", default-features = false, features = ["json"] }
 
 # YAML only
-dotcfg = { version = "0.1", default-features = false, features = ["yaml"] }
+dotcfg = { version = "0.3", default-features = false, features = ["yaml"] }
 
 # All three
-dotcfg = { version = "0.1", features = ["json", "yaml"] }
+dotcfg = { version = "0.3", features = ["json", "yaml"] }
 ```
 
 ## Quick Start
@@ -70,7 +78,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Per-key (no need to load whole struct)
     cfg.set("username", "jane")?;
-    let val = cfg.get("user.username")?;
+    let val = cfg.get("username")?;
 
     // Per-key, typed
     cfg.set_val("port", 8080u16)?;
@@ -248,6 +256,12 @@ cfg.file_path()?;   // full file path
 cfg.delete_file()?; // delete file, keep dir
 cfg.delete_dir()?;  // delete entire dir
 ```
+
+## Documentation
+
+The full guides and examples are available at **https://dotcfg.pxxl.click**.
+
+For the generated Rust API reference, see **https://docs.rs/dotcfg**.
 
 ## Features
 
