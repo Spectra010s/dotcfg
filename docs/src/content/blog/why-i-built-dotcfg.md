@@ -6,7 +6,6 @@ tags:
   - rust
   - configuration
   - dotcfg
-version: "0.3.0"
 ---
 
 When building command-line tools or desktop applications in Rust, one of the first questions you face is: **where and how should I store user configuration?**
@@ -91,35 +90,6 @@ You can also choose a different filename:
 let cfg = DotCfg::new("mytool").filename("settings");
 ```
 
-### Custom directories in 0.3.0
-
-With dotcfg 0.3.0, that flexibility extends to exact directories:
-
-```rust
-let cfg = DotCfg::new("mytool")
-    .at_dir("/my/project/.config");
-```
-
-`at_dir()` uses the directory you provide directly instead of applying the dot-directory or XDG strategy. That makes project-local configuration, tests, and portable setups much easier to represent.
-
-## Finding configuration from inside a project
-
-Custom directories solve the case where you already know the path. CLI tools often have another problem: the command may be running several directories below the project root.
-
-In 0.3.0, dotcfg can search through the current directory and its ancestors for the application's dot-directory:
-
-```rust
-let cfg = DotCfg::new("mytool");
-
-if let Some(project_cfg) = cfg.find_in_ancestors()? {
-    // use the discovered project configuration
-}
-```
-
-You can also start the search from a specific path with `find_in_ancestors_from()`.
-
-If nothing is found, discovery returns `Ok(None)` rather than silently falling back to another location. The caller gets to decide what happens next.
-
 ## A small CLI example
 
 The full-struct and key-level APIs can live together. You can load a complete configuration when that is convenient and still update an individual setting later.
@@ -148,6 +118,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 I built dotcfg around that idea: configuration APIs should give you useful defaults without taking control away from you.
 
-You can load a whole struct or work with one key. You can use a traditional dot-directory, XDG, an exact directory, or discover project configuration. And you can enable the formats your application actually needs — TOML, JSON, YAML, or more than one of them.
+You can load a whole struct or work with one key. You can choose a directory strategy and enable the formats your application actually needs — TOML, JSON, YAML, or more than one of them.
 
 If that sounds useful for something you're building, check out **dotcfg on GitHub** or the rest of the documentation.
