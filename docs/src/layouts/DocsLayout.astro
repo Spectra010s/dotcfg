@@ -15,26 +15,9 @@ const {
 const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
 const starCount = Number.isFinite(githubData.stars) && githubData.stars > 0 ? githubData.stars : null;
 const groups = [
-  {
-    label: "Basics",
-    links: [
-      ["Getting started", "/getting-started"],
-      ["Directory strategies", "/directory-strategies"],
-      ["Formats", "/formats"],
-    ],
-  },
-  {
-    label: "Core API",
-    links: [
-      ["Loading & saving", "/loading-saving"],
-      ["Key access", "/key-access"],
-      ["Environment overrides", "/environment"],
-    ],
-  },
-  {
-    label: "Examples",
-    links: [["Examples", "/examples"]],
-  },
+  { label: "Basics", links: [["Getting started", "/getting-started"], ["Directory strategies", "/directory-strategies"], ["Formats", "/formats"]] },
+  { label: "Core API", links: [["Loading & saving", "/loading-saving"], ["Key access", "/key-access"], ["Environment overrides", "/environment"]] },
+  { label: "Examples", links: [["Examples", "/examples"]] },
 ];
 ---
 
@@ -52,7 +35,7 @@ const groups = [
       <div class="header-actions">
         <a class="github-star" href="https://github.com/Spectra010s/dotcfg" aria-label={starCount ? `Star dotcfg on GitHub. ${starCount} stars.` : "Star dotcfg on GitHub"}>
           <span class="star-icon" aria-hidden="true">☆{starCount && <span class="star-count">{starCount}</span>}</span>
-          <span class="star-label"><span class="star-desktop">Star on GitHub</span><span class="star-mobile">Star</span></span>
+          <span>Star<span class="star-suffix"> on GitHub</span></span>
         </a>
         <button class="menu-button" type="button" aria-label="Open documentation navigation" aria-controls="mobile-nav" aria-expanded="false" data-menu-open>
           <span></span><span></span><span></span>
@@ -70,11 +53,7 @@ const groups = [
         {groups.map((group) => (
           <section class="nav-group">
             <p class="sidebar-title">{group.label}</p>
-            <nav>
-              {group.links.map(([label, href]) => (
-                <a href={href} class:list={{ active: currentPath === href }}>{label}</a>
-              ))}
-            </nav>
+            <nav>{group.links.map(([label, href]) => <a href={href} class:list={{ active: currentPath === href }}>{label}</a>)}</nav>
           </section>
         ))}
       </div>
@@ -86,11 +65,7 @@ const groups = [
           {groups.map((group) => (
             <section class="nav-group">
               <p class="sidebar-title">{group.label}</p>
-              <nav>
-                {group.links.map(([label, href]) => (
-                  <a href={href} class:list={{ active: currentPath === href }}>{label}</a>
-                ))}
-              </nav>
+              <nav>{group.links.map(([label, href]) => <a href={href} class:list={{ active: currentPath === href }}>{label}</a>)}</nav>
             </section>
           ))}
         </div>
@@ -113,21 +88,17 @@ const groups = [
       const backdrop = document.querySelector('[data-nav-backdrop]');
       const openButton = document.querySelector('[data-menu-open]');
       const closeButton = document.querySelector('[data-menu-close]');
-
       const setNavOpen = (open) => {
         nav?.classList.toggle('open', open);
         backdrop?.classList.toggle('open', open);
         document.body.classList.toggle('nav-open', open);
         openButton?.setAttribute('aria-expanded', String(open));
       };
-
       openButton?.addEventListener('click', () => setNavOpen(true));
       closeButton?.addEventListener('click', () => setNavOpen(false));
       backdrop?.addEventListener('click', () => setNavOpen(false));
       nav?.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => setNavOpen(false)));
-      document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') setNavOpen(false);
-      });
+      document.addEventListener('keydown', (event) => { if (event.key === 'Escape') setNavOpen(false); });
     </script>
   </body>
 </html>
