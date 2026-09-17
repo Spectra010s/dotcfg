@@ -1,14 +1,21 @@
 ---
 import { getCollection } from "astro:content";
 import DocsLayout from "../../layouts/DocsLayout.astro";
+import { createBlogIndexSchema } from "../../lib/schema";
 
+const description = "Articles about dotcfg, configuration management in Rust, and the design decisions behind the crate.";
 const posts = (await getCollection("blog", ({ data }) => !data.draft))
   .sort((a, b) => b.data.publishedAt.valueOf() - a.data.publishedAt.valueOf());
+const schema = createBlogIndexSchema({
+  description,
+  posts: posts.map((post) => ({ title: post.data.title, path: `/blog/${post.id}` })),
+});
 ---
 
 <DocsLayout
   title="Blog — dotcfg"
-  description="Articles about dotcfg, configuration management in Rust, and the design decisions behind the crate."
+  description={description}
+  schema={schema}
 >
   <section class="blog-index">
     <header class="blog-index-header">
