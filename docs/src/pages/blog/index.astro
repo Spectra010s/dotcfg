@@ -1,0 +1,38 @@
+---
+import { getCollection } from "astro:content";
+import DocsLayout from "../../layouts/DocsLayout.astro";
+
+const posts = (await getCollection("blog", ({ data }) => !data.draft))
+  .sort((a, b) => b.data.publishedAt.valueOf() - a.data.publishedAt.valueOf());
+---
+
+<DocsLayout
+  title="Blog — dotcfg"
+  description="Articles about dotcfg, configuration management in Rust, and the design decisions behind the crate."
+>
+  <section class="blog-index">
+    <header class="blog-index-header">
+      <p class="eyebrow">Blog</p>
+      <h1>Notes from building dotcfg</h1>
+      <p>Design decisions, practical configuration patterns, and deeper looks at dotcfg features.</p>
+    </header>
+
+    <div class="blog-list">
+      {posts.map((post) => (
+        <article class="blog-card">
+          <a href={`/blog/${post.id}/`}>
+            <div class="blog-card-meta">
+              <time datetime={post.data.publishedAt.toISOString()}>
+                {post.data.publishedAt.toLocaleDateString("en", { year: "numeric", month: "short", day: "numeric" })}
+              </time>
+              {post.data.version && <span>dotcfg {post.data.version}</span>}
+            </div>
+            <h2>{post.data.title}</h2>
+            <p>{post.data.description}</p>
+            <span class="blog-read">Read article →</span>
+          </a>
+        </article>
+      ))}
+    </div>
+  </section>
+</DocsLayout>
