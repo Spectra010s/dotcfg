@@ -1,0 +1,36 @@
+---
+import DocsLayout from "./DocsLayout.astro";
+
+interface Props {
+  title: string;
+  description: string;
+  publishedAt: Date;
+  tags?: string[];
+  version?: string;
+}
+
+const { title, description, publishedAt, tags = [], version } = Astro.props;
+const formattedDate = publishedAt.toLocaleDateString("en", {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+});
+---
+
+<DocsLayout title={`${title} — dotcfg`} description={description}>
+  <article class="blog-post">
+    <header class="blog-post-header">
+      <a class="blog-back" href="/blog">← Blog</a>
+      <h1>{title}</h1>
+      <p class="blog-description">{description}</p>
+      <div class="blog-meta">
+        <time datetime={publishedAt.toISOString()}>{formattedDate}</time>
+        {version && <span>dotcfg {version}</span>}
+        {tags.map((tag) => <span>{tag}</span>)}
+      </div>
+    </header>
+    <div class="blog-prose">
+      <slot />
+    </div>
+  </article>
+</DocsLayout>
