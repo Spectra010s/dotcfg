@@ -1,5 +1,17 @@
 ---
 import DocsLayout from "../layouts/DocsLayout.astro";
+import CodeBlock from "../components/CodeBlock.astro";
+const dotExample = `let cfg = DotCfg::new("mytool");
+// ~/.mytool/config.toml
+
+// Equivalent when you want to be explicit:
+let cfg = DotCfg::new("mytool").dot();`;
+const xdgExample = `let cfg = DotCfg::new("mytool").xdg();
+let path = cfg.file_path()?;`;
+const customExample = `let cfg = DotCfg::new("mytool")
+    .at_dir("/my/project/.config");
+
+// /my/project/.config/config.toml`;
 const ancestorExample = `let project = DotCfg::new("mytool")
     .find_in_ancestors()?;
 
@@ -7,6 +19,8 @@ match project {
     Some(cfg) => println!("Found {:?}", cfg.file_path()?),
     None => println!("No project config found"),
 }`;
+const ancestorFromExample = `let cfg = DotCfg::new("mytool")
+    .find_in_ancestors_from("/tmp/project/src")?;`;
 ---
 <DocsLayout title="Directory strategies — dotcfg" description="Choose exactly where dotcfg stores or discovers configuration.">
   <article class="prose">
@@ -15,34 +29,25 @@ match project {
 
     <h2>Home dot directory</h2>
     <p>This is the default. It places the application directory directly under your home directory, similar to familiar directories such as <code>.cargo</code> and <code>.ssh</code>.</p>
-    <div class="code-window"><div class="code-header"><span>Rust</span></div><pre><code>let cfg = DotCfg::new("mytool");
-// ~/.mytool/config.toml
-
-// Equivalent when you want to be explicit:
-let cfg = DotCfg::new("mytool").dot();</code></pre></div>
+    <CodeBlock label="Rust" code={dotExample} />
 
     <h2>XDG configuration</h2>
     <p>Use <code>.xdg()</code> when your application should follow the platform's XDG configuration strategy. dotcfg delegates this resolution to <code>etcetera</code> rather than manually assuming one path on every operating system.</p>
-    <div class="code-window"><div class="code-header"><span>Rust</span></div><pre><code>let cfg = DotCfg::new("mytool").xdg();
-let path = cfg.file_path()?;</code></pre></div>
+    <CodeBlock label="Rust" code={xdgExample} />
 
     <h2>Custom directory <span class="version-badge">0.3.0</span></h2>
     <p><code>.at_dir()</code> bypasses both the dot and XDG strategies. The directory you provide is used exactly as the config directory; dotcfg only appends the configured filename and extension.</p>
-    <div class="code-window"><div class="code-header"><span>Project-local config</span></div><pre><code>let cfg = DotCfg::new("mytool")
-    .at_dir("/my/project/.config");
-
-// /my/project/.config/config.toml</code></pre></div>
+    <CodeBlock label="Project-local config" code={customExample} />
     <div class="note"><strong>Exact means exact</strong><p><code>.at_dir("./settings")</code> does not add <code>mytool</code>, expand <code>~</code>, or expand environment variables. Relative paths remain relative to the process working directory.</p></div>
 
     <h2>Discover a project config <span class="version-badge">0.3.0</span></h2>
     <p>For tools that can run from anywhere inside a project, <code>find_in_ancestors()</code> starts at the current working directory and walks upward. At each level it looks for <code>.mytool/config.toml</code> (or your selected filename and format).</p>
-    <div class="code-window"><div class="code-header"><span>Rust</span></div><pre><code>{ancestorExample}</code></pre></div>
+    <CodeBlock label="Rust" code={ancestorExample} />
     <p>The starting directory itself is checked first. If nothing is found, the method returns <code>Ok(None)</code>; it does not silently fall back to your home or XDG directory.</p>
 
     <h3>Start somewhere specific</h3>
     <p><code>find_in_ancestors_from()</code> is the same search with an explicit starting path. This is useful when your program already knows the project path, and it makes tests deterministic.</p>
-    <div class="code-window"><div class="code-header"><span>Rust</span></div><pre><code>let cfg = DotCfg::new("mytool")
-    .find_in_ancestors_from("/tmp/project/src")?;</code></pre></div>
+    <CodeBlock label="Rust" code={ancestorFromExample} />
 
     <h2>Which should I use?</h2>
     <div class="choice-grid"><div><strong>Dot</strong><p>Simple CLI or personal application config.</p></div><div><strong>XDG</strong><p>Applications that should follow platform config conventions.</p></div><div><strong>Custom</strong><p>Tests, portable setups, or a known project directory.</p></div><div><strong>Ancestor search</strong><p>Developer tools that discover project-local config from nested directories.</p></div></div>
