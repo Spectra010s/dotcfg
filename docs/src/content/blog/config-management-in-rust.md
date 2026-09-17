@@ -28,7 +28,21 @@ const EXTENSION: &str = "toml";
 const EXTENSION: &str = "yml";
 ```
 
-The crate also explicitly rejects builds where multiple configuration-language features are enabled together.
+Because the format-specific definitions live at module scope, enabling conflicting configuration-language features is rejected at compile time. This is the kind of error you see:
+
+```text
+error[E0428]: the name `EXTENSION` is defined multiple times
+   --> src/lib.rs:157:1
+    |
+154 | const EXTENSION: &str = "toml";
+    | ------------------------------- previous definition of the value `EXTENSION` here
+...
+157 | const EXTENSION: &str = "yml";
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `EXTENSION` redefined here
+
+error: Exactly one config language feature must be enabled to compile confy.
+       Please disable one of either the `toml_conf`, `yaml_conf`, or `ron_conf` features.
+```
 
 That isn't inherently a bad design. It fits `confy`'s goal: choose the format for your application's configuration at compile time, then let the crate handle the details.
 
