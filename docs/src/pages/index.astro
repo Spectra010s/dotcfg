@@ -1,5 +1,6 @@
 ---
 import DocsLayout from "../layouts/DocsLayout.astro";
+import CodeBlock from "../components/CodeBlock.astro";
 
 const topics = [
   ["Directory strategies", "Use a dot directory, XDG, an exact custom path, or discover project config from ancestors.", "/directory-strategies"],
@@ -48,10 +49,7 @@ const examples = [
         <button class="tab" type="button" data-tab="json">JSON</button>
         <button class="tab" type="button" data-tab="yaml">YAML</button>
       </div>
-      <div class="code-window compact">
-        <div class="code-header"><span>Cargo.toml</span><button class="copy-button" type="button" data-copy-target="install-code">Copy</button></div>
-        <pre><code id="install-code">dotcfg = "0.2.0"</code></pre>
-      </div>
+      <CodeBlock label="Cargo.toml" code={'dotcfg = "0.2.0"'} compact />
     </div>
   </section>
 
@@ -62,10 +60,7 @@ const examples = [
         <h2>Load a typed Rust configuration.</h2>
       </div>
     </div>
-    <div class="code-window">
-      <div class="code-header"><span>src/main.rs</span><button class="copy-button" type="button" data-copy-target="quick-start">Copy</button></div>
-      <pre><code id="quick-start">{quickStart}</code></pre>
-    </div>
+    <CodeBlock label="src/main.rs" code={quickStart} />
   </section>
 
   <div class="cards">
@@ -95,22 +90,11 @@ const examples = [
     document.querySelectorAll('[data-install-tabs] .tab').forEach((button) => {
       button.addEventListener('click', () => {
         const key = button.dataset.tab;
-        const code = document.querySelector('#install-code');
+        const code = document.querySelector('[data-install-tabs] [data-code-block] code');
         if (!key || !code) return;
         code.textContent = installValues[key];
         document.querySelectorAll('[data-install-tabs] .tab').forEach((tab) => tab.classList.remove('active'));
         button.classList.add('active');
-      });
-    });
-
-    document.querySelectorAll('[data-copy-target]').forEach((button) => {
-      button.addEventListener('click', async () => {
-        const target = document.getElementById(button.dataset.copyTarget);
-        if (!target) return;
-        await navigator.clipboard.writeText(target.textContent || '');
-        const original = button.textContent;
-        button.textContent = 'Copied';
-        setTimeout(() => { button.textContent = original; }, 1200);
       });
     });
   </script>
