@@ -9,6 +9,7 @@ include = [
     "tests/**/*",
     "examples/**/*",
     "README.md",
+    "CONTRIBUTING.md",
     "LICENSE-*",
     "CODE_OF_CONDUCT.md",
 ]
