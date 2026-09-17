@@ -34,6 +34,7 @@ TOML is enabled by default. JSON and YAML are optional features. Changes that af
 
 ```sh
 cargo test
+cargo test --no-default-features --features toml
 cargo test --no-default-features --features json
 cargo test --no-default-features --features yaml
 cargo test --all-features
@@ -47,8 +48,8 @@ The documentation site lives in `docs/` and uses Astro.
 
 ```sh
 cd docs
-npm install
-npm run build
+pnpm install
+pnpm run build
 ```
 
 Keep examples aligned with the actual public API. If you add or change public behavior, update the relevant documentation and README examples as part of the same contribution.
@@ -69,14 +70,14 @@ A pull request should:
 This repository uses Conventional Commit-style messages. Examples:
 
 ```text
-feat: add a new directory strategy
-fix: preserve nested key values
-docs: clarify environment overrides
-test: cover yaml key access
-refactor: simplify config path resolution
+feat(discovery): add ancestor search for project configs
+fix(keys): preserve nested key values
+docs(readme): clarify environment overrides
+test(yaml): cover yaml key access
+refactor(paths): simplify config path resolution
 ```
 
-Use a scope when it makes the commit clearer, but it is not required.
+Use a scope on every commit. Examples:
 
 ## Reporting bugs
 
