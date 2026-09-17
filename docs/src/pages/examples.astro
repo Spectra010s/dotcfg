@@ -1,5 +1,6 @@
 ---
 import DocsLayout from "../layouts/DocsLayout.astro";
+import CodeBlock from "../components/CodeBlock.astro";
 const recipes = [
   { title: "Optional configuration", text: "Run normally when no config file exists.", code: `let config: Option<AppConfig> = cfg.load()?;` },
   { title: "Required configuration", text: "Fail when the application has not been configured yet.", code: `let config: AppConfig = cfg.load_or_error()?;` },
@@ -9,6 +10,13 @@ const recipes = [
   { title: "Discover project configuration", text: "Run a developer tool from a nested directory and find the nearest project config.", code: `let cfg = DotCfg::new("mytool")\n    .find_in_ancestors()?;` },
   { title: "Environment-first reads", text: "Let deployment or shell values override the saved file.", code: `let cfg = DotCfg::new("mytool")\n    .with_env_prefix("myapp");\nlet port: u16 = cfg.get_as("port")?;` },
 ];
+const cliPattern = `let saved: AppConfig = cfg.load()?.unwrap_or_default();
+
+let active = AppConfig {
+    host: args.host.unwrap_or(saved.host),
+    port: args.port.unwrap_or(saved.port),
+    log_level: args.log_level.unwrap_or(saved.log_level),
+};`;
 ---
 <DocsLayout title="Examples — dotcfg" description="Small, practical dotcfg recipes you can adapt to real Rust applications.">
   <article class="prose">
@@ -16,18 +24,12 @@ const recipes = [
     <p class="lead">These are intentionally small snippets: copy the pattern you need, then shape the config type around your application. As real-world dotcfg integrations appear, this page can grow a separate showcase without turning the core docs into a gallery.</p>
 
     <div class="recipe-list">
-      {recipes.map((recipe) => <section class="recipe"><h2>{recipe.title}</h2><p>{recipe.text}</p><div class="code-window"><div class="code-header"><span>Rust</span></div><pre><code>{recipe.code}</code></pre></div></section>)}
+      {recipes.map((recipe) => <section class="recipe"><h2>{recipe.title}</h2><p>{recipe.text}</p><CodeBlock label="Rust" code={recipe.code} /></section>)}
     </div>
 
     <h2>CLI flags over saved config</h2>
     <p>The repository includes a complete Clap example using a common precedence pattern: CLI argument → config file → default value.</p>
-    <div class="code-window"><div class="code-header"><span>Pattern</span></div><pre><code>let saved: AppConfig = cfg.load()?.unwrap_or_default();
-
-let active = AppConfig &#123;
-    host: args.host.unwrap_or(saved.host),
-    port: args.port.unwrap_or(saved.port),
-    log_level: args.log_level.unwrap_or(saved.log_level),
-&#125;;</code></pre></div>
+    <CodeBlock label="Pattern" code={cliPattern} />
 
     <p class="next-link"><a class="inline-link" href="https://github.com/Spectra010s/dotcfg/tree/main/examples">Browse the repository examples ↗</a></p>
   </article>
