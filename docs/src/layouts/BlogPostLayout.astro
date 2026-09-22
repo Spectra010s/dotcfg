@@ -10,9 +10,10 @@ interface Props {
   modifiedAt?: Date;
   tags?: string[];
   version?: string;
+  headings?: { depth: number; slug: string; text: string }[];
 }
 
-const { title, description, path, publishedAt, modifiedAt, tags = [], version } = Astro.props;
+const { title, description, path, publishedAt, modifiedAt, tags = [], version, headings = [] } = Astro.props;
 const formattedDate = publishedAt.toLocaleDateString("en", {
   year: "numeric",
   month: "long",
@@ -36,6 +37,7 @@ const schema = createBlogPostSchema({
   ogType="article"
   publishedAt={publishedAt}
   modifiedAt={modifiedAt}
+  toc={headings}
 >
   <article class="blog-post">
     <header class="blog-post-header">
