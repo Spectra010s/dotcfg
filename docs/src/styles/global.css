@@ -57,6 +57,6 @@
     @apply m-0 overflow-x-auto bg-code-dark p-[1.2rem] font-mono text-sm leading-[1.65] text-[#f7f3ea];
   }
   pre code {
-    @apply bg-transparent p-0;
+    @apply bg-transparent p-0 text-[#f7f3ea];
   }
 }
