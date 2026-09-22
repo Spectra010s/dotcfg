@@ -13,6 +13,7 @@
   --primary-foreground: #fdfcf9;
   --ring: #9a4f22;
   --code-dark: #22211f;
+  --code-foreground: #f7f3ea;
 }
 
 :root[data-theme="dark"] {
@@ -26,6 +27,7 @@
   --primary-foreground: #181817;
   --ring: #eda56e;
   --code-dark: #111110;
+  --code-foreground: #f7f3ea;
 }
 
 @theme inline {
@@ -39,6 +41,7 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-ring: var(--ring);
   --color-code-dark: var(--code-dark);
+  --color-code-foreground: var(--code-foreground);
   --font-sans: Arial, Helvetica, sans-serif;
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
@@ -57,6 +60,6 @@
     @apply m-0 overflow-x-auto bg-code-dark p-[1.2rem] font-mono text-sm leading-[1.65] text-[#f7f3ea];
   }
   pre code {
-    @apply bg-transparent p-0 text-[#f7f3ea];
+    @apply bg-transparent p-0 text-code-foreground;
   }
 }
