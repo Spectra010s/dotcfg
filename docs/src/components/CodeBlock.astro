@@ -10,8 +10,17 @@ const { label = "Code", code, compact = false } = Astro.props;
 
 <div class:list={["code-window", { compact }]} data-code-block>
   <div class="code-header">
-    <span>{label}</span>
-    <button class="copy-button" type="button" data-copy-button>Copy</button>
+    <span class="code-label">{label}</span>
+    <button class="copy-button" type="button" data-copy-button aria-label={`Copy ${label} code`}>
+      <svg class="copy-icon" viewBox="0 0 16 16" aria-hidden="true">
+        <rect x="5.25" y="5.25" width="8" height="8" rx="1.5"></rect>
+        <path d="M10.75 5.25V3.5A1.75 1.75 0 0 0 9 1.75H3.5A1.75 1.75 0 0 0 1.75 3.5V9A1.75 1.75 0 0 0 3.5 10.75h1.75"></path>
+      </svg>
+      <svg class="check-icon" viewBox="0 0 16 16" aria-hidden="true">
+        <path d="m3 8.5 3 3 7-7"></path>
+      </svg>
+      <span data-copy-label>Copy</span>
+    </button>
   </div>
   <pre><code>{code}</code></pre>
 </div>
@@ -22,13 +31,23 @@ const { label = "Code", code, compact = false } = Astro.props;
     block.dataset.copyReady = 'true';
 
     const button = block.querySelector<HTMLButtonElement>('[data-copy-button]');
+    const label = block.querySelector<HTMLElement>('[data-copy-label]');
     const code = block.querySelector('code');
-    if (!button || !code) return;
+    if (!button || !label || !code) return;
 
     button.addEventListener('click', async () => {
-      await navigator.clipboard.writeText(code.textContent || '');
-      button.textContent = 'Copied';
-      window.setTimeout(() => { button.textContent = 'Copy'; }, 1200);
+      try {
+        await navigator.clipboard.writeText(code.textContent || '');
+        button.classList.add('copied');
+        label.textContent = 'Copied';
+        window.setTimeout(() => {
+          button.classList.remove('copied');
+          label.textContent = 'Copy';
+        }, 1200);
+      } catch {
+        label.textContent = 'Copy failed';
+        window.setTimeout(() => { label.textContent = 'Copy'; }, 1200);
+      }
     });
   });
 </script>
