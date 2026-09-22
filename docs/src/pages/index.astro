@@ -20,6 +20,7 @@ struct Config {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cfg = DotCfg::new("mytool");
+    cfg.save(&Config { username: "tayo".into(), port: 8080 })?;
     let config: Option<Config> = cfg.load()?;
     Ok(())
 }`;
