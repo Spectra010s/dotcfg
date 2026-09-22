@@ -6,9 +6,21 @@ interface Props {
 
 const { type = "info", title } = Astro.props;
 const labels = { info: "Information", warning: "Warning", success: "Success", error: "Error" };
+const tones = {
+  info: "border-[#285f91]/25 bg-[#eff5fa] dark:border-[#9ccbf0]/25 dark:bg-[#202f3a]",
+  warning: "border-[#87590c]/25 bg-[#fff8e8] dark:border-[#efc677]/25 dark:bg-[#352e20]",
+  success: "border-[#286543]/25 bg-[#edf7f0] dark:border-[#91d3a8]/25 dark:bg-[#203329]",
+  error: "border-[#a33333]/25 bg-[#fdf0ef] dark:border-[#f0a0a0]/25 dark:bg-[#392525]",
+};
+const accents = {
+  info: "text-[#285f91] dark:text-[#9ccbf0]",
+  warning: "text-[#87590c] dark:text-[#efc677]",
+  success: "text-[#286543] dark:text-[#91d3a8]",
+  error: "text-[#a33333] dark:text-[#f0a0a0]",
+};
 ---
-<aside class:list={["callout", type]} aria-label={labels[type]}>
-  <svg class="callout-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+<aside class:list={["my-6 flex items-start gap-3 rounded-[9px] border px-[18px] py-4 text-sm", tones[type]]} aria-label={labels[type]}>
+  <svg class:list={["mt-0.5 h-5 w-5 shrink-0", accents[type]]} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     {type === "warning" ? (
       <><path d="M10.3 4.4 2.5 18a2 2 0 0 0 1.7 3h15.6a2 2 0 0 0 1.7-3L13.7 4.4a2 2 0 0 0-3.4 0Z" /><path d="M12 9v4m0 4h.01" /></>
     ) : (
@@ -19,25 +31,8 @@ const labels = { info: "Information", warning: "Warning", success: "Success", er
       </>
     )}
   </svg>
-  <div class="callout-content">
-    {title && <strong class="callout-title">{title}</strong>}
+  <div class="min-w-0 [overflow-wrap:anywhere] [&_p]:my-2 [&_>_:first-child]:mt-0 [&_>_:last-child]:mb-0">
+    {title && <strong class:list={["mb-1 block", accents[type]]}>{title}</strong>}
     <slot />
   </div>
 </aside>
-
-<style>
-  .callout { --callout-color: #285f91; --callout-background: #eff5fa; display: flex; align-items: flex-start; gap: 12px; margin: 24px 0; padding: 16px 18px; border: 1px solid color-mix(in srgb, var(--callout-color) 25%, transparent); border-radius: 9px; background: var(--callout-background); font-size: 14px; }
-  .warning { --callout-color: #87590c; --callout-background: #fff8e8; }
-  .success { --callout-color: #286543; --callout-background: #edf7f0; }
-  .error { --callout-color: #a33333; --callout-background: #fdf0ef; }
-  .callout-icon { width: 20px; height: 20px; flex: 0 0 20px; margin-top: 2px; color: var(--callout-color); }
-  .callout-content { min-width: 0; overflow-wrap: anywhere; }
-  .callout-title { display: block; margin-bottom: 4px; color: var(--callout-color); }
-  .callout-content :global(p) { margin: 8px 0; }
-  .callout-content :global(> :first-child) { margin-top: 0; }
-  .callout-content :global(> :last-child) { margin-bottom: 0; }
-  :global([data-theme="dark"]) .callout { --callout-color: #9ccbf0; --callout-background: #202f3a; }
-  :global([data-theme="dark"]) .warning { --callout-color: #efc677; --callout-background: #352e20; }
-  :global([data-theme="dark"]) .success { --callout-color: #91d3a8; --callout-background: #203329; }
-  :global([data-theme="dark"]) .error { --callout-color: #f0a0a0; --callout-background: #392525; }
-</style>

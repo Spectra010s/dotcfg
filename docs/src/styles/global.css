@@ -1,8 +1,69 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 :root {
-  --background: #fbfaf7; --surface: #ffffff; --text: #20201d; --muted: #696860; --border: #e6e2d9; --accent: #9a4f22; --code: #f2eee7; --code-dark: #22211f;
+  --background: #fbfaf7;
+  --foreground: #20201d;
+  --card: #ffffff;
+  --muted: #f2eee7;
+  --muted-foreground: #696860;
+  --border: #e6e2d9;
+  --primary: #9a4f22;
+  --primary-foreground: #fdfcf9;
+  --ring: #9a4f22;
+  --code-dark: #22211f;
 }
+
+:root[data-theme="dark"] {
+  --background: #181817;
+  --foreground: #f3efe7;
+  --card: #222220;
+  --muted: #302e29;
+  --muted-foreground: #b7b3a9;
+  --border: #3c3b36;
+  --primary: #eda56e;
+  --primary-foreground: #181817;
+  --ring: #eda56e;
+  --code-dark: #111110;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-ring: var(--ring);
+  --color-code-dark: var(--code-dark);
+  --font-sans: Arial, Helvetica, sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+}
+
+/* TEMP: old names kept alive while components convert to
+   utilities. Delete this block once no component uses them. */
+:root {
+  --surface: var(--card);
+  --text: var(--foreground);
+  --accent: var(--primary);
+  --code: var(--muted);
+}
+
+/* TEMP: legacy hand-written CSS. Utilities (higher layer) override these
+   on converted markup. Delete class blocks as their components convert. */
+@layer components {
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body { margin: 0; background: var(--background); color: var(--text); font-family: Arial, Helvetica, sans-serif; font-size: 16px; line-height: 1.65; }
@@ -100,4 +161,5 @@ section{margin-top:58px}.section-heading{display:flex;align-items:end;justify-co
 [data-theme="dark"] .blog-prose p, [data-theme="dark"] .blog-prose li { color: var(--text); }
 @media(max-width:760px) {
   .release-banner { justify-content: center; flex-wrap: wrap; white-space: normal; overflow-x: visible; }
+}
 }
