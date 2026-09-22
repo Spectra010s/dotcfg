@@ -2,6 +2,16 @@
 import DocsLayout from "../layouts/DocsLayout.astro";
 import CodeBlock from "../components/CodeBlock.astro";
 
+const dependency = (value: string) => `[dependencies]
+${value}
+serde = { version = "1", features = ["derive"] }`;
+const installValues = {
+  toml: dependency('dotcfg = "0.3.0"'),
+  json: dependency('dotcfg = { version = "0.3.0", features = ["json"] }'),
+  yaml: dependency('dotcfg = { version = "0.3.0", features = ["yaml"] }'),
+  all: dependency('dotcfg = { version = "0.3.0", features = ["json", "yaml"] }'),
+};
+
 const topics = [
   ["Directory strategies", "Use a dot directory, XDG, an exact custom path, or discover project config from ancestors.", "/directory-strategies"],
   ["Multiple formats", "TOML by default, with feature-gated JSON and YAML support.", "/formats"],
@@ -49,15 +59,17 @@ const examples = [
         <button class="tab active" type="button" data-tab="toml">TOML <small>default</small></button>
         <button class="tab" type="button" data-tab="json">JSON</button>
         <button class="tab" type="button" data-tab="yaml">YAML</button>
+        <button class="tab" type="button" data-tab="all">All formats</button>
       </div>
-      <CodeBlock label="Cargo.toml" code={'dotcfg = "0.3.0"'} compact />
+      <CodeBlock label="Cargo.toml" code={installValues.toml} compact />
     </div>
+    <p class="install-note">Published release: 0.3.0. Explore more on the <a class="inline-link" href="/examples">examples page</a>.</p>
   </section>
 
   <section>
     <div class="section-heading">
       <div>
-        <span class="eyebrow">First config</span>
+        <span class="eyebrow">Your first config</span>
         <h2>Load a typed Rust configuration.</h2>
       </div>
     </div>
@@ -81,13 +93,15 @@ const examples = [
     </div>
   </section>
 
-  <script is:inline>
-    const installValues = {
-      toml: 'dotcfg = "0.3.0"',
-      json: 'dotcfg = { version = "0.3.0", features = ["json"] }',
-      yaml: 'dotcfg = { version = "0.3.0", features = ["yaml"] }',
-    };
+  <section class="api-section">
+    <div>
+      <h2>Need the full API?</h2>
+      <p>Every method, type, and error is in the Rust reference.</p>
+    </div>
+    <a class="text-link" href="https://docs.rs/dotcfg">Open docs.rs ↗</a>
+  </section>
 
+  <script is:inline define:vars={{ installValues }}>
     document.querySelectorAll('[data-install-tabs] .tab').forEach((button) => {
       button.addEventListener('click', () => {
         const key = button.dataset.tab;
@@ -100,3 +114,11 @@ const examples = [
     });
   </script>
 </DocsLayout>
+
+<style>
+  .tab-list { flex-wrap: wrap; }
+  .install-note { margin: 12px 0 0; color: var(--muted); font-size: 13px; }
+  .api-section { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; padding: 24px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+  .api-section h2 { margin: 0; }
+  .api-section p { margin: 8px 0 0; color: var(--muted); }
+</style>
