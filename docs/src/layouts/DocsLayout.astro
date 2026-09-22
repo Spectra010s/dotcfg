@@ -10,6 +10,7 @@ interface Props {
   ogType?: "website" | "article";
   publishedAt?: Date;
   modifiedAt?: Date;
+  toc?: { depth: number; slug: string; text: string }[];
 }
 
 const {
@@ -19,6 +20,7 @@ const {
   ogType = "website",
   publishedAt,
   modifiedAt,
+  toc = [],
 } = Astro.props;
 
 const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
@@ -28,12 +30,14 @@ const pageTitle = title.replace(/\s+[—-]\s+dotcfg$/, "");
 const schema = customSchema ?? (currentPath === "/"
   ? createHomeSchema(description)
   : createDocsSchema({ title: pageTitle, description, path: currentPath }));
+const tocItems = toc.filter((heading) => heading.depth === 2 || heading.depth === 3);
 const starCount = Number.isFinite(githubData.stars) && githubData.stars > 0 ? githubData.stars : null;
 const groups = [
   { label: "Basics", links: [["Getting started", "/getting-started"], ["Directory strategies", "/directory-strategies"], ["Formats", "/formats"]] },
   { label: "Core API", links: [["Loading & saving", "/loading-saving"], ["Key access", "/key-access"], ["Environment overrides", "/environment"]] },
   { label: "Examples", links: [["Examples", "/examples"]] },
   { label: "Blog", links: [["Blog", "/blog"]] },
+  { label: "Go deeper", links: [["API reference ↗", "https://docs.rs/dotcfg"], ["crates.io ↗", "https://crates.io/crates/dotcfg"]] },
 ];
 ---
 
@@ -119,6 +123,10 @@ const groups = [
             </section>
           ))}
         </div>
+        <div class="sidebar-bottom">
+          <p>A small crate.<br />A little less config code.</p>
+          <span>MIT / Apache-2.0</span>
+        </div>
       </aside>
       <div class="content-column">
         <main><slot /></main>
@@ -131,6 +139,16 @@ const groups = [
           <p>Built by <a href="https://github.com/Spectra010s">Spectra010s <span>↗</span></a></p>
         </footer>
       </div>
+      {tocItems.length > 0 && (
+        <aside class="page-toc" aria-label="On this page">
+          <p class="sidebar-title">On this page</p>
+          <nav>
+            {tocItems.map((heading) => (
+              <a href={`#${heading.slug}`} class:list={{ nested: heading.depth === 3 }}>{heading.text}</a>
+            ))}
+          </nav>
+        </aside>
+      )}
     </div>
 
     <script is:inline>
