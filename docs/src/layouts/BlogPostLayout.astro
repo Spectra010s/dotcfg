@@ -39,18 +39,18 @@ const schema = createBlogPostSchema({
   modifiedAt={modifiedAt}
   toc={headings}
 >
-  <article class="blog-post">
-    <header class="blog-post-header">
-      <a class="blog-back" href="/blog">← Blog</a>
-      <h1>{title}</h1>
-      <p class="blog-description">{description}</p>
-      <div class="blog-meta">
+  <article class="mt-1">
+    <header class="mb-[42px] border-b border-border pb-[30px] max-[760px]:mb-[34px] max-[760px]:pb-6">
+      <a class="mb-6 inline-block text-[13px] font-bold text-primary" href="/blog">← Blog</a>
+      <h1 class="m-0 mb-4 text-[clamp(38px,5.5vw,58px)] max-[760px]:text-[40px]">{title}</h1>
+      <p class="mb-[18px] max-w-[680px] text-[19px] leading-[1.55] text-muted-foreground max-[760px]:text-[17px]">{description}</p>
+      <div class="flex flex-wrap gap-x-[14px] gap-y-2 text-xs text-muted-foreground">
         <time datetime={publishedAt.toISOString()}>{formattedDate}</time>
-        {version && <span>dotcfg {version}</span>}
-        {tags.map((tag) => <span>{tag}</span>)}
+        {version && <span class="rounded-full border border-border px-[7px] py-0.5">dotcfg {version}</span>}
+        {tags.map((tag) => <span class="rounded-full border border-border px-[7px] py-0.5">{tag}</span>)}
       </div>
     </header>
-    <div class="blog-prose">
+    <div class="max-w-[720px] max-[760px]:max-w-none">
       <slot />
     </div>
   </article>
