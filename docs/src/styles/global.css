@@ -65,6 +65,13 @@ section{margin-top:58px}.section-heading{display:flex;align-items:end;justify-co
 .blog-prose th,.blog-prose td{padding:10px 12px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
 .blog-prose th{font-weight:700}
 .site-footer nav { display:flex; flex-wrap:wrap; gap:18px; }.site-footer a:hover { color:var(--text); }.site-footer p { margin:0; white-space:nowrap; }.site-footer p a { color:var(--accent); font-weight:700; }
+@media(max-width:1200px){
+  .shell{grid-template-columns:220px minmax(0,1fr)}
+  .page-toc{display:none}
+}
+@media(max-width:900px){
+  .shell{grid-template-columns:210px minmax(0,1fr);gap:28px}
+}
 @media(max-width:760px){
   .release-banner{justify-content:flex-start;overflow-x:auto;padding:7px 16px;white-space:nowrap}.release-banner span{display:none}
   .topbar{padding:0 16px}.menu-button{display:block}.star-suffix{display:none}.github-star{height:34px;padding:0 9px;gap:6px;font-size:12px}.star-icon{font-size:19px}.shell{display:block;padding:30px 20px 44px}.sidebar,.page-toc{display:none}
