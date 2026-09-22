@@ -17,26 +17,26 @@ const schema = createBlogIndexSchema({
   description={description}
   schema={schema}
 >
-  <section class="blog-index">
-    <header class="blog-index-header">
-      <p class="eyebrow">Blog</p>
-      <h1>Notes from building dotcfg</h1>
-      <p>Design decisions, practical configuration patterns, and deeper looks at dotcfg features.</p>
+  <section class="mt-2">
+    <header class="mb-[42px] max-w-[680px] max-[760px]:mb-[30px]">
+      <p class="text-[13px] font-bold text-primary">Blog</p>
+      <h1 class="m-0 my-2 text-[clamp(38px,5vw,54px)]">Notes from building dotcfg</h1>
+      <p class="m-0 text-lg text-muted-foreground max-[760px]:text-base">Design decisions, practical configuration patterns, and deeper looks at dotcfg features.</p>
     </header>
 
-    <div class="blog-list">
+    <div class="border-t border-border">
       {posts.map((post) => (
-        <article class="blog-card">
-          <a href={`/blog/${post.id}/`}>
-            <div class="blog-card-meta">
+        <article class="border-b border-border">
+          <a href={`/blog/${post.id}/`} class="block px-1 py-[26px] pb-7 transition-all hover:pl-2 max-[760px]:py-[22px] max-[760px]:px-0 max-[760px]:hover:pl-0">
+            <div class="flex flex-wrap gap-x-[14px] gap-y-2 text-xs text-muted-foreground">
               <time datetime={post.data.publishedAt.toISOString()}>
                 {post.data.publishedAt.toLocaleDateString("en", { year: "numeric", month: "short", day: "numeric" })}
               </time>
-              {post.data.version && <span>dotcfg {post.data.version}</span>}
+              {post.data.version && <span class="rounded-full border border-border px-[7px] py-0.5">dotcfg {post.data.version}</span>}
             </div>
-            <h2>{post.data.title}</h2>
-            <p>{post.data.description}</p>
-            <span class="blog-read">Read article →</span>
+            <h2 class="my-2 mx-0 mb-2 text-[25px] max-[760px]:text-[22px]">{post.data.title}</h2>
+            <p class="m-0 max-w-[650px] text-muted-foreground">{post.data.description}</p>
+            <span class="mt-[14px] inline-block text-[13px] font-bold text-primary">Read article →</span>
           </a>
         </article>
       ))}
