@@ -8,7 +8,7 @@ export async function getStaticPaths() {
 }
 
 const { post } = Astro.props;
-const { Content } = await render(post);
+const { Content, headings } = await render(post);
 const path = `/blog/${post.id}`;
 ---
 
@@ -20,6 +20,7 @@ const path = `/blog/${post.id}`;
   modifiedAt={post.data.modifiedAt}
   tags={post.data.tags}
   version={post.data.version}
+  headings={headings}
 >
   <Content />
 </BlogPostLayout>
