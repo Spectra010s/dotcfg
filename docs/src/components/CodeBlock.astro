@@ -3,12 +3,14 @@ interface Props {
   label?: string;
   code: string;
   compact?: boolean;
+  lineNumbers?: boolean;
 }
 
-const { label = "Code", code, compact = false } = Astro.props;
+const { label = "Code", code, compact = false, lineNumbers = false } = Astro.props;
+const lines = code.split("\\n");
 ---
 
-<div class:list={["code-window", { compact }]} data-code-block>
+<div class:list={["code-window", { compact, "with-lines": lineNumbers }]} data-code-block>
   <div class="code-header">
     <span class="code-label">{label}</span>
     <button class="copy-button" type="button" data-copy-button aria-label={`Copy ${label} code`}>
@@ -22,7 +24,13 @@ const { label = "Code", code, compact = false } = Astro.props;
       <span data-copy-label>Copy</span>
     </button>
   </div>
-  <pre><code>{code}</code></pre>
+  {lineNumbers ? (
+    <pre class="numbered-code"><code>{lines.map((line, index) => (
+      <span class="code-line"><span class="line-number" aria-hidden="true">{index + 1}</span><span class="line-content">{line || " "}</span></span>
+    ))}</code></pre>
+  ) : (
+    <pre><code>{code}</code></pre>
+  )}
 </div>
 
 <script>
