@@ -139,16 +139,14 @@ const groups = [
           <p>Built by <a href="https://github.com/Spectra010s">Spectra010s <span>↗</span></a></p>
         </footer>
       </div>
-      {tocItems.length > 0 && (
-        <aside class="page-toc" aria-label="On this page">
-          <p class="sidebar-title">On this page</p>
-          <nav>
-            {tocItems.map((heading) => (
-              <a href={`#${heading.slug}`} class:list={{ nested: heading.depth === 3 }}>{heading.text}</a>
-            ))}
-          </nav>
-        </aside>
-      )}
+      <aside class="page-toc" aria-label="On this page" data-page-toc class:list={{ "has-server-toc": tocItems.length > 0 }}>
+        <p class="sidebar-title">On this page</p>
+        <nav data-page-toc-nav>
+          {tocItems.map((heading) => (
+            <a href={`#${heading.slug}`} class:list={{ nested: heading.depth === 3 }}>{heading.text}</a>
+          ))}
+        </nav>
+      </aside>
     </div>
 
     <script is:inline>
@@ -167,6 +165,36 @@ const groups = [
       backdrop?.addEventListener('click', () => setNavOpen(false));
       nav?.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => setNavOpen(false)));
       document.addEventListener('keydown', (event) => { if (event.key === 'Escape') setNavOpen(false); });
+
+      const toc = document.querySelector('[data-page-toc]');
+      const tocNav = toc?.querySelector('[data-page-toc-nav]');
+      if (toc && tocNav && !toc.classList.contains('has-server-toc')) {
+        const headings = [...document.querySelectorAll('main h2, main h3')];
+        const used = new Set();
+        const slugify = (value) => {
+          const base = value.toLowerCase().trim()
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-') || 'section';
+          let slug = base;
+          let index = 2;
+          while (used.has(slug) || document.getElementById(slug)) {
+            slug = `${base}-${index++}`;
+          }
+          used.add(slug);
+          return slug;
+        };
+        headings.forEach((heading) => {
+          if (!heading.id) heading.id = slugify(heading.textContent || 'section');
+          else used.add(heading.id);
+          const link = document.createElement('a');
+          link.href = `#${heading.id}`;
+          link.textContent = heading.textContent || '';
+          if (heading.tagName === 'H3') link.classList.add('nested');
+          tocNav.appendChild(link);
+        });
+        if (headings.length === 0) toc.hidden = true;
+      }
     </script>
   </body>
 </html>
