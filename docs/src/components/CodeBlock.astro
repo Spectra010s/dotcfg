@@ -26,7 +26,7 @@ const lines = code.split("\n");
   </div>
   {lineNumbers ? (
     <pre class="m-0 overflow-x-auto bg-code-dark p-0 font-mono text-sm leading-[1.65] text-code-foreground"><code class="block bg-transparent p-0">{lines.map((line, index) => (
-      <span class="grid min-h-[1.65em] grid-cols-[3rem_minmax(0,1fr)]"><span class="border-r border-code-border pr-4 text-right text-code-faint select-none" aria-hidden="true">{index + 1}</span><span class="block whitespace-pre pl-4 pr-5">{line || " "}</span></span>
+      <span class="grid min-h-[1.65em] grid-cols-[3rem_minmax(0,1fr)]"><span class="border-r border-code-border pr-4 text-right text-code-line select-none" aria-hidden="true">{index + 1}</span><span class="block whitespace-pre pl-4 pr-5">{line || " "}</span></span>
     ))}</code></pre>
   ) : (
     <pre class:list={["m-0 overflow-x-auto bg-code-dark font-mono text-sm leading-[1.65] text-code-foreground", compact ? "px-5 pb-5 pt-4" : "p-[1.2rem]"]}><code class="bg-transparent p-0">{code}</code></pre>
