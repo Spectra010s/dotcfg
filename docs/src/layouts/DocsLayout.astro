@@ -61,7 +61,6 @@ const groups = [
           document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#181817' : '#fbfaf7');
           document.querySelectorAll('[data-theme-select]').forEach((select) => { select.value = preference; });
           document.querySelectorAll('[data-theme-favicon]').forEach((icon) => {
-            icon.media = 'all';
             icon.href = '/brand/icon-' + theme + '.png';
           });
         };
@@ -81,9 +80,7 @@ const groups = [
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href={canonicalUrl} />
 
-    <link rel="icon" href="/favicon.ico" sizes="any" />
-    <link rel="icon" type="image/png" href="/brand/icon-light.png" media="(prefers-color-scheme: light)" data-theme-favicon />
-    <link rel="icon" type="image/png" href="/brand/icon-dark.png" media="(prefers-color-scheme: dark)" data-theme-favicon />
+    <link rel="icon" type="image/png" href="/brand/icon-light.png" data-theme-favicon />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="alternate" type="application/rss+xml" title="dotcfg blog" href="/rss.xml" />
 
