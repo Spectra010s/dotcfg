@@ -7,7 +7,7 @@ interface Props {
 }
 
 const { label = "Code", code, compact = false, lineNumbers = false } = Astro.props;
-const lines = code.split("\\n");
+const lines = code.split("\n");
 ---
 
 <div class:list={["code-window", { compact, "with-lines": lineNumbers }]} data-code-block>
