@@ -19,26 +19,26 @@ if let Some(config) = config {
 }`;
 ---
 <DocsLayout title="Loading & saving — dotcfg" description="Choose how missing configuration behaves and persist complete typed structs.">
-  <article class="prose">
-    <span class="eyebrow">Core API</span><h1>Loading & saving</h1>
-    <p class="lead">dotcfg separates “there is no config yet” from “the config is broken.” You decide whether a missing file is normal, an error, or a reason to create defaults.</p>
+  <article class="[&_p]:max-w-[720px]">
+    <span class="text-[13px] font-bold text-primary">Core API</span><h1 class="m-0 mb-5 mt-3 text-[clamp(38px,7vw,64px)] leading-[1.02] tracking-[-0.045em] max-[760px]:text-[44px]">Loading & saving</h1>
+    <p class="max-w-[680px] text-xl text-muted-foreground max-[760px]:text-lg">dotcfg separates “there is no config yet” from “the config is broken.” You decide whether a missing file is normal, an error, or a reason to create defaults.</p>
 
-    <h2>Optional: <code>load()</code></h2>
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">Optional: <code>load()</code></h2>
     <p>Use this when your application can run without a saved config. A missing file becomes <code>Ok(None)</code>; I/O and parse failures still return errors.</p>
     <CodeBlock label="Rust" code={optionalExample} />
 
-    <h2>Required: <code>load_or_error()</code></h2>
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">Required: <code>load_or_error()</code></h2>
     <p>Use this when the application must be configured before it can continue.</p>
     <CodeBlock label="Rust" code={'let config: AppConfig = cfg.load_or_error()?;'} />
 
-    <h2>Create defaults: <code>load_or_default()</code></h2>
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">Create defaults: <code>load_or_default()</code></h2>
     <p>This requires your type to implement <code>Default</code>. If the file is missing, dotcfg constructs <code>T::default()</code>, saves it, and returns that value.</p>
     <CodeBlock label="Rust" code={defaultExample} />
 
-    <h2>Save a complete config</h2>
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">Save a complete config</h2>
     <p><code>save()</code> serializes your struct in the selected format. The config directory is created automatically when it does not exist.</p>
     <CodeBlock label="Rust" code={saveExample} />
 
-    <div class="note"><strong>Whole config vs one key</strong><p>Use <code>save()</code> when your program already has the complete config struct. If you only need to change one field while preserving everything else, use <a class="inline-link" href="/key-access"><code>set()</code> or <code>set_val()</code></a>.</p></div>
+    <div class="my-6 rounded-r-lg border-l-[3px] border-primary bg-[#f5f0e8] px-[18px] py-[15px] dark:bg-muted"><strong class="block">Whole config vs one key</strong><p class="mt-[3px] text-muted-foreground">Use <code>save()</code> when your program already has the complete config struct. If you only need to change one field while preserving everything else, use <a class="font-bold text-primary" href="/key-access"><code>set()</code> or <code>set_val()</code></a>.</p></div>
   </article>
 </DocsLayout>

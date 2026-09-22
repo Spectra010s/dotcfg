@@ -3,27 +3,27 @@ import DocsLayout from "../layouts/DocsLayout.astro";
 import CodeBlock from "../components/CodeBlock.astro";
 ---
 <DocsLayout title="Key access — dotcfg" description="Read and update individual flat or nested config values, with typed access when needed.">
-  <article class="prose">
-    <span class="eyebrow">Core API</span><h1>Key access</h1>
-    <p class="lead">You do not always need to deserialize and rewrite the whole config. dotcfg can read or update one key while preserving the rest of the file.</p>
+  <article class="[&_p]:max-w-[720px]">
+    <span class="text-[13px] font-bold text-primary">Core API</span><h1 class="m-0 mb-5 mt-3 text-[clamp(38px,7vw,64px)] leading-[1.02] tracking-[-0.045em] max-[760px]:text-[44px]">Key access</h1>
+    <p class="max-w-[680px] text-xl text-muted-foreground max-[760px]:text-lg">You do not always need to deserialize and rewrite the whole config. dotcfg can read or update one key while preserving the rest of the file.</p>
 
-    <h2>Strings with <code>get()</code> and <code>set()</code></h2>
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">Strings with <code>get()</code> and <code>set()</code></h2>
     <CodeBlock label="Rust" code={'cfg.set("username", "tayo")?;\nlet username = cfg.get("username")?;'} />
     <p><code>set()</code> creates the file and parent directory if necessary. When a file already exists, other keys are preserved.</p>
 
-    <h2>Nested keys</h2>
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">Nested keys</h2>
     <p>Use dot-separated paths for nested values. Intermediate maps/tables are created when writing a nested key.</p>
     <CodeBlock label="Rust" code={'cfg.set("user.name", "tayo")?;\nlet name = cfg.get("user.name")?;'} />
 
-    <h2>Typed values with <code>get_as()</code></h2>
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">Typed values with <code>get_as()</code></h2>
     <p><code>get()</code> returns a string. When the value is naturally a number, boolean, list, or another Serde-compatible type, ask dotcfg for that Rust type directly.</p>
     <CodeBlock label="Rust" code={'let port: u16 = cfg.get_as("port")?;\nlet plugins: Vec<String> = cfg.get_as("plugins")?;\nlet auto_update: bool = cfg.get_as("features.auto_update")?;'} />
     <p>The value is deserialized from the config format's native value representation rather than being converted to a string and parsed again.</p>
 
-    <h2>Typed writes with <code>set_val()</code></h2>
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">Typed writes with <code>set_val()</code></h2>
     <CodeBlock label="Rust" code={'cfg.set_val("port", 8080u16)?;\ncfg.set_val("plugins", vec!["fmt", "lint"])?;\ncfg.set_val("features.auto_update", true)?;'} />
     <p>This matters because <code>set("port", "8080")</code> is a string-oriented write, while <code>set_val("port", 8080u16)</code> stores a native numeric value.</p>
 
-    <div class="note"><strong>A useful rule</strong><p>Use <code>get/set</code> for string settings and <code>get_as/set_val</code> when the Rust type matters. Use <code>load/save</code> when you are working with the whole configuration struct.</p></div>
+    <div class="my-6 rounded-r-lg border-l-[3px] border-primary bg-[#f5f0e8] px-[18px] py-[15px] dark:bg-muted"><strong class="block">A useful rule</strong><p class="mt-[3px] text-muted-foreground">Use <code>get/set</code> for string settings and <code>get_as/set_val</code> when the Rust type matters. Use <code>load/save</code> when you are working with the whole configuration struct.</p></div>
   </article>
 </DocsLayout>

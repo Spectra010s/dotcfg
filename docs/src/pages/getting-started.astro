@@ -23,31 +23,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }`;
 ---
 <DocsLayout title="Getting started — dotcfg" description="Install dotcfg and load your first Rust configuration.">
-  <article class="prose">
-    <span class="eyebrow">Basics</span><h1>Getting started</h1>
-    <p class="lead">If you can define a Rust struct, dotcfg can store it as configuration. This guide starts from the Rust pieces too, so you do not need to already know how Serde-based config libraries work.</p>
+  <article class="[&_p]:max-w-[720px]">
+    <span class="text-[13px] font-bold text-primary">Basics</span><h1 class="m-0 mb-5 mt-3 text-[clamp(38px,7vw,64px)] leading-[1.02] tracking-[-0.045em] max-[760px]:text-[44px]">Getting started</h1>
+    <p class="max-w-[680px] text-xl text-muted-foreground max-[760px]:text-lg">If you can define a Rust struct, dotcfg can store it as configuration. This guide starts from the Rust pieces too, so you do not need to already know how Serde-based config libraries work.</p>
 
-    <h2>1. Add dotcfg</h2>
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">1. Add dotcfg</h2>
     <p>TOML support is enabled by default. You also need <code>serde</code> with its derive feature so Rust can turn your struct into config data and back again.</p>
     <CodeBlock label="Cargo.toml" code={dependencyConfig} />
 
-    <div class="note"><strong>New in 0.3.0</strong><p>dotcfg 0.3.0 adds custom configuration directories and project config discovery. See <a class="inline-link" href="/directory-strategies">Directory strategies</a> for <code>at_dir()</code>, <code>find_in_ancestors()</code>, and <code>find_in_ancestors_from()</code>.</p></div>
+    <div class="my-6 rounded-r-lg border-l-[3px] border-primary bg-[#f5f0e8] px-[18px] py-[15px] dark:bg-muted"><strong class="block">New in 0.3.0</strong><p class="mt-[3px] text-muted-foreground">dotcfg 0.3.0 adds custom configuration directories and project config discovery. See <a class="font-bold text-primary" href="/directory-strategies">Directory strategies</a> for <code>at_dir()</code>, <code>find_in_ancestors()</code>, and <code>find_in_ancestors_from()</code>.</p></div>
 
-    <h2>2. Define your configuration</h2>
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">2. Define your configuration</h2>
     <p><code>Serialize</code> means the struct can be written to a file. <code>Deserialize</code> means it can be reconstructed from that file. <code>Default</code> is only needed when you want <code>load_or_default()</code> to create a starting config automatically.</p>
     <CodeBlock label="src/main.rs" code={firstConfig} />
 
-    <h2>3. Understand what just happened</h2>
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">3. Understand what just happened</h2>
     <p><code>DotCfg::new("myapp")</code> uses the default dot-directory strategy. With TOML and the default filename, the config resolves to <code>~/.myapp/config.toml</code>. <code>load_or_default()</code> loads that file when it exists; otherwise it saves <code>AppConfig::default()</code> first and returns it.</p>
 
-    <h2>Choose how missing config behaves</h2>
-    <div class="choice-grid">
-      <div><code>load()</code><strong>Optional</strong><p>Returns <code>Ok(None)</code> when no file exists.</p></div>
-      <div><code>load_or_error()</code><strong>Required</strong><p>Returns a not-found error when setup is required first.</p></div>
-      <div><code>load_or_default()</code><strong>Create defaults</strong><p>Creates and saves <code>T::default()</code> when missing.</p></div>
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">Choose how missing config behaves</h2>
+    <div class="my-5 grid grid-cols-2 gap-2.5 max-[760px]:grid-cols-1">
+      <div class="rounded-[9px] border border-border bg-card p-4"><code class="mb-[7px] block w-max">load()</code><strong class="mb-[7px] block w-max">Optional</strong><p class="m-0 text-sm text-muted-foreground">Returns <code>Ok(None)</code> when no file exists.</p></div>
+      <div class="rounded-[9px] border border-border bg-card p-4"><code class="mb-[7px] block w-max">load_or_error()</code><strong class="mb-[7px] block w-max">Required</strong><p class="m-0 text-sm text-muted-foreground">Returns a not-found error when setup is required first.</p></div>
+      <div class="rounded-[9px] border border-border bg-card p-4"><code class="mb-[7px] block w-max">load_or_default()</code><strong class="mb-[7px] block w-max">Create defaults</strong><p class="m-0 text-sm text-muted-foreground">Creates and saves <code>T::default()</code> when missing.</p></div>
     </div>
 
-    <h2>Where next?</h2>
-    <p>Learn <a class="inline-link" href="/directory-strategies">where dotcfg can store files</a>, or jump to <a class="inline-link" href="/loading-saving">loading and saving</a> for the full behavior of each method.</p>
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">Where next?</h2>
+    <p>Learn <a class="font-bold text-primary" href="/directory-strategies">where dotcfg can store files</a>, or jump to <a class="font-bold text-primary" href="/loading-saving">loading and saving</a> for the full behavior of each method.</p>
   </article>
 </DocsLayout>
