@@ -14,6 +14,7 @@
   --ring: #9a4f22;
   --code-dark: #22211f;
   --code-foreground: #f7f3ea;
+  --code-border: #35332f;
 }
 
 :root[data-theme="dark"] {
@@ -28,6 +29,7 @@
   --ring: #eda56e;
   --code-dark: #111110;
   --code-foreground: #f7f3ea;
+  --code-border: #35332f;
 }
 
 @theme inline {
@@ -42,6 +44,7 @@
   --color-ring: var(--ring);
   --color-code-dark: var(--code-dark);
   --color-code-foreground: var(--code-foreground);
+  --color-code-border: var(--code-border);
   --font-sans: Arial, Helvetica, sans-serif;
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
