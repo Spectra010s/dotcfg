@@ -74,6 +74,10 @@ const examples = [
       </div>
     </div>
     <CodeBlock label="src/main.rs" code={quickStart} lineNumbers />
+    <aside class="note" aria-label="Missing configuration">
+      <strong>Missing is a choice.</strong>
+      <p><code>load()</code> returns <code>Ok(None)</code> when the file is absent. Use <code>load_or_default()</code> to opt into creating it with default values. Parse and I/O errors still propagate.</p>
+    </aside>
   </section>
 
   <div class="cards">
