@@ -1,6 +1,7 @@
 ---
 import DocsLayout from "../layouts/DocsLayout.astro";
 import CodeBlock from "../components/CodeBlock.astro";
+import Callout from "../components/Callout.astro";
 
 const dependency = (value: string) => `[dependencies]
 ${value}
@@ -63,7 +64,7 @@ const examples = [
       </div>
       <CodeBlock label="Cargo.toml" code={installValues.toml} compact />
     </div>
-    <p class="install-note">Published release: 0.3.0. Explore more on the <a class="inline-link" href="/examples">examples page</a>.</p>
+    <p class="install-note">Published release: <a class="inline-link" href="https://docs.rs/dotcfg/0.3.0/dotcfg/">0.3.0</a>. Explore more on the <a class="inline-link" href="/examples">examples page</a>.</p>
   </section>
 
   <section>
@@ -74,10 +75,9 @@ const examples = [
       </div>
     </div>
     <CodeBlock label="src/main.rs" code={quickStart} lineNumbers />
-    <aside class="note" aria-label="Missing configuration">
-      <strong>Missing is a choice.</strong>
-      <p><code>load()</code> returns <code>Ok(None)</code> when the file is absent. Use <code>load_or_default()</code> to opt into creating it with default values. Parse and I/O errors still propagate.</p>
-    </aside>
+    <Callout type="info">
+      <p><strong>Missing is a choice.</strong> <code>load()</code> returns <code>Ok(None)</code> when the file is absent. Use <code>load_or_default()</code> to opt into creating it with default values. Parse and I/O errors still propagate.</p>
+    </Callout>
   </section>
 
   <div class="cards">
