@@ -36,4 +36,8 @@ const labels = { info: "Information", warning: "Warning", success: "Success", er
   .callout-content :global(p) { margin: 8px 0; }
   .callout-content :global(> :first-child) { margin-top: 0; }
   .callout-content :global(> :last-child) { margin-bottom: 0; }
+  :global([data-theme="dark"]) .callout { --callout-color: #9ccbf0; --callout-background: #202f3a; }
+  :global([data-theme="dark"]) .warning { --callout-color: #efc677; --callout-background: #352e20; }
+  :global([data-theme="dark"]) .success { --callout-color: #91d3a8; --callout-background: #203329; }
+  :global([data-theme="dark"]) .error { --callout-color: #f0a0a0; --callout-background: #392525; }
 </style>
