@@ -15,6 +15,12 @@
   --code-dark: #22211f;
   --code-foreground: #f7f3ea;
   --code-border: #35332f;
+  --code-muted: #bdb8ad;
+  --code-faint: #77736c;
+  --code-bright: #d6d1c6;
+  --accent-soft: #d7bba8;
+  --border-strong: #d3c9ba;
+  --prose: #34332f;
 }
 
 :root[data-theme="dark"] {
@@ -30,6 +36,12 @@
   --code-dark: #111110;
   --code-foreground: #f7f3ea;
   --code-border: #35332f;
+  --code-muted: #bdb8ad;
+  --code-faint: #77736c;
+  --code-bright: #d6d1c6;
+  --accent-soft: #d7bba8;
+  --border-strong: #d3c9ba;
+  --prose: #34332f;
 }
 
 @theme inline {
@@ -45,6 +57,12 @@
   --color-code-dark: var(--code-dark);
   --color-code-foreground: var(--code-foreground);
   --color-code-border: var(--code-border);
+  --color-code-muted: var(--code-muted);
+  --color-code-faint: var(--code-faint);
+  --color-code-bright: var(--code-bright);
+  --color-accent-soft: var(--accent-soft);
+  --color-border-strong: var(--border-strong);
+  --color-prose: var(--prose);
   --font-sans: Arial, Helvetica, sans-serif;
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }

@@ -27,6 +27,6 @@ import CodeBlock from "../components/CodeBlock.astro";
     <p><code>.filename()</code> accepts the filename without an extension. dotcfg adds the extension that matches the selected format.</p>
     <CodeBlock label="Rust" code={'let cfg = DotCfg::new("mytool")\n    .json()\n    .filename("settings");\n\n// ~/.mytool/settings.json'} />
 
-    <div class="my-6 rounded-r-lg border-l-[3px] border-primary bg-[#f5f0e8] px-[18px] py-[15px] dark:bg-muted"><strong class="block">At least one format is required</strong><p class="mt-[3px] text-muted-foreground">If you disable default features, enable <code>toml</code>, <code>json</code>, or <code>yaml</code> yourself. dotcfg intentionally fails compilation when no format feature is available.</p></div>
+    <div class="my-6 rounded-r-lg border-l-[3px] border-primary bg-muted px-[18px] py-[15px] dark:bg-muted"><strong class="block">At least one format is required</strong><p class="mt-[3px] text-muted-foreground">If you disable default features, enable <code>toml</code>, <code>json</code>, or <code>yaml</code> yourself. dotcfg intentionally fails compilation when no format feature is available.</p></div>
   </article>
 </DocsLayout>

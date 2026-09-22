@@ -11,9 +11,9 @@ const lines = code.split("\n");
 ---
 
 <div class="overflow-hidden rounded-[11px] border border-code-border bg-code-dark shadow-[0_12px_32px_rgba(36,31,25,0.08)]" data-code-block>
-  <div class="flex min-h-[42px] items-center justify-between border-b border-code-border py-0 pl-4 pr-2.5 font-mono text-xs text-[#bdb8ad]">
+  <div class="flex min-h-[42px] items-center justify-between border-b border-code-border py-0 pl-4 pr-2.5 font-mono text-xs text-code-muted">
     <span class="overflow-hidden text-ellipsis whitespace-nowrap">{label}</span>
-    <button class="inline-flex cursor-pointer items-center gap-1.5 rounded-md border-0 bg-transparent px-2 py-1.5 font-sans text-xs leading-none text-[#d6d1c6] hover:bg-white/[0.07] hover:text-code-foreground" type="button" data-copy-button aria-label={`Copy ${label} code`}>
+    <button class="inline-flex cursor-pointer items-center gap-1.5 rounded-md border-0 bg-transparent px-2 py-1.5 font-sans text-xs leading-none text-code-bright hover:bg-white/[0.07] hover:text-code-foreground" type="button" data-copy-button aria-label={`Copy ${label} code`}>
       <svg class="h-3.5 w-3.5 fill-none stroke-current [stroke-width:1.4] [stroke-linecap:round] [stroke-linejoin:round]" viewBox="0 0 16 16" aria-hidden="true" data-copy-icon>
         <rect x="5.25" y="5.25" width="8" height="8" rx="1.5"></rect>
         <path d="M10.75 5.25V3.5A1.75 1.75 0 0 0 9 1.75H3.5A1.75 1.75 0 0 0 1.75 3.5V9A1.75 1.75 0 0 0 3.5 10.75h1.75"></path>
@@ -26,7 +26,7 @@ const lines = code.split("\n");
   </div>
   {lineNumbers ? (
     <pre class="m-0 overflow-x-auto bg-code-dark p-0 font-mono text-sm leading-[1.65] text-code-foreground"><code class="block bg-transparent p-0">{lines.map((line, index) => (
-      <span class="grid min-h-[1.65em] grid-cols-[3rem_minmax(0,1fr)]"><span class="border-r border-code-border pr-4 text-right text-[#77736c] select-none" aria-hidden="true">{index + 1}</span><span class="block whitespace-pre pl-4 pr-5">{line || " "}</span></span>
+      <span class="grid min-h-[1.65em] grid-cols-[3rem_minmax(0,1fr)]"><span class="border-r border-code-border pr-4 text-right text-code-faint select-none" aria-hidden="true">{index + 1}</span><span class="block whitespace-pre pl-4 pr-5">{line || " "}</span></span>
     ))}</code></pre>
   ) : (
     <pre class:list={["m-0 overflow-x-auto bg-code-dark font-mono text-sm leading-[1.65] text-code-foreground", compact ? "px-5 pb-5 pt-4" : "p-[1.2rem]"]}><code class="bg-transparent p-0">{code}</code></pre>
