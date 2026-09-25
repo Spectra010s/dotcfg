@@ -15,7 +15,7 @@ interface Props {
 }
 
 const {
-  title = "dotcfg — Rust configuration, your way",
+  title = "dotcfg — Configuration management for Rust",
   description = "Documentation for dotcfg, flexible configuration management for Rust applications.",
   schema: customSchema,
   ogType = "website",
@@ -78,6 +78,7 @@ const groups = [
     </script>
     <title>{title}</title>
     <meta name="description" content={description} />
+    <meta name="author" content="Spectra010s" />
     <meta name="robots" content="index, follow" />
     <meta name="google-site-verification" content="-oHieeYQu6xGSIhnHW1QfQGRRFUikmwUrWl_oYU2xQg" />
     <link rel="canonical" href={canonicalUrl} />
@@ -94,15 +95,16 @@ const groups = [
     <meta property="og:image" content={socialImageUrl} />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="600" />
-    <meta property="og:image:alt" content="dotcfg — Rust configuration, your way" />
+    <meta property="og:image:alt" content="dotcfg — Configuration management for Rust" />
     {ogType === "article" && publishedAt && <meta property="article:published_time" content={publishedAt.toISOString()} />}
     {ogType === "article" && modifiedAt && <meta property="article:modified_time" content={modifiedAt.toISOString()} />}
 
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:creator" content="@Spectra010s" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={socialImageUrl} />
-    <meta name="twitter:image:alt" content="dotcfg — Rust configuration, your way" />
+    <meta name="twitter:image:alt" content="dotcfg — Configuration management for Rust" />
 
     <script type="application/ld+json" set:html={JSON.stringify(schema)} />
   </head>
