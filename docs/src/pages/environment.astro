@@ -3,26 +3,26 @@ import DocsLayout from "../layouts/DocsLayout.astro";
 import CodeBlock from "../components/CodeBlock.astro";
 ---
 <DocsLayout title="Environment overrides — dotcfg" description="Override file values with prefixed environment variables while keeping file writes explicit.">
-  <article class="prose">
-    <span class="eyebrow">Configuration</span><h1>Environment overrides</h1>
-    <p class="lead">Environment overrides are opt-in. Once enabled, per-key reads check the environment first and fall back to the config file only when the matching variable is absent.</p>
+  <article class="[&_p]:max-w-[720px]">
+    <span class="text-[13px] font-bold text-primary">Configuration</span><h1 class="m-0 mb-5 mt-3 text-[clamp(38px,7vw,64px)] leading-[1.02] tracking-[-0.045em] max-[760px]:text-[44px]">Environment overrides</h1>
+    <p class="max-w-[680px] text-xl text-muted-foreground max-[760px]:text-lg">Environment overrides are opt-in. Once enabled, per-key reads check the environment first and fall back to the config file only when the matching variable is absent.</p>
 
-    <h2>Enable a prefix</h2>
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">Enable a prefix</h2>
     <CodeBlock label="Rust" code={'let cfg = DotCfg::new("mytool")\n    .with_env_prefix("myapp");\n\nlet port: u16 = cfg.get_as("port")?;'} />
     <p>The key <code>port</code> maps to <code>MYAPP_PORT</code>. Nested dots become underscores, so <code>user.name</code> maps to <code>MYAPP_USER_NAME</code>. Both the prefix and key are uppercased for the environment-variable name.</p>
 
-    <h2>Precedence</h2>
-    <div class="precedence"><span>Environment variable</span><b>→</b><span>Config file</span></div>
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">Precedence</h2>
+    <div class="my-[18px] flex items-center gap-3 rounded-[9px] border border-border bg-card p-4 max-[760px]:flex-col max-[760px]:items-start"><span class="font-bold">Environment variable</span><b class="text-primary max-[760px]:rotate-90">→</b><span class="font-bold">Config file</span></div>
     <p>If <code>MYAPP_PORT</code> exists, its value wins. If it is absent, dotcfg reads <code>port</code> from the file. A malformed environment value is an error—it is not silently ignored in favor of the file.</p>
 
-    <h2>Typed environment values</h2>
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">Typed environment values</h2>
     <p>Environment variables start as strings, so <code>get_as()</code> interprets them for the requested Rust type.</p>
-    <div class="choice-grid"><div><strong>Numbers</strong><p>Parsed using Rust's normal string parsing.</p></div><div><strong>Booleans</strong><p><code>true</code>/<code>false</code> and <code>1</code>/<code>0</code>, case-insensitive.</p></div><div><strong>Sequences</strong><p>Comma-separated: <code>MYAPP_TAGS=cli,fast</code>.</p></div><div><strong>Option&lt;T&gt;</strong><p>A variable that exists is treated as <code>Some(T)</code>.</p></div></div>
+    <div class="my-5 grid grid-cols-2 gap-2.5 max-[760px]:grid-cols-1"><div class="rounded-[9px] border border-border bg-card p-4"><strong class="mb-[7px] block w-max">Numbers</strong><p class="m-0 text-sm text-muted-foreground">Parsed using Rust's normal string parsing.</p></div><div class="rounded-[9px] border border-border bg-card p-4"><strong class="mb-[7px] block w-max">Booleans</strong><p class="m-0 text-sm text-muted-foreground"><code>true</code>/<code>false</code> and <code>1</code>/<code>0</code>, case-insensitive.</p></div><div class="rounded-[9px] border border-border bg-card p-4"><strong class="mb-[7px] block w-max">Sequences</strong><p class="m-0 text-sm text-muted-foreground">Comma-separated: <code>MYAPP_TAGS=cli,fast</code>.</p></div><div class="rounded-[9px] border border-border bg-card p-4"><strong class="mb-[7px] block w-max">Option&lt;T&gt;</strong><p class="m-0 text-sm text-muted-foreground">A variable that exists is treated as <code>Some(T)</code>.</p></div></div>
 
-    <h2>Structs and maps</h2>
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">Structs and maps</h2>
     <p>A single environment variable cannot represent a struct or map. Express those values as nested keys instead—for example, use <code>MYAPP_SERVER_HOST</code> for <code>server.host</code>.</p>
 
-    <h2>Writes never touch the environment</h2>
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">Writes never touch the environment</h2>
     <p><code>set()</code> and <code>set_val()</code> always write to the config file. Environment variables only participate in reads, keeping persistence explicit and predictable.</p>
   </article>
 </DocsLayout>

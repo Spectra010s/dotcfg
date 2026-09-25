@@ -1,30 +1,44 @@
 ---
 import "../styles/global.css";
+import ThemeToggle from "../components/ThemeToggle.astro";
 import githubData from "../data/github.json";
 import { createDocsSchema, createHomeSchema } from "../lib/schema";
 
 interface Props {
   title?: string;
   description?: string;
+  schema?: Record<string, unknown>;
+  ogType?: "website" | "article";
+  publishedAt?: Date;
+  modifiedAt?: Date;
+  toc?: { depth: number; slug: string; text: string }[];
 }
 
 const {
-  title = "dotcfg — Rust configuration, your way",
+  title = "dotcfg — Configuration management for Rust",
   description = "Documentation for dotcfg, flexible configuration management for Rust applications.",
+  schema: customSchema,
+  ogType = "website",
+  publishedAt,
+  modifiedAt,
+  toc = [],
 } = Astro.props;
 
 const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
 const canonicalUrl = new URL(currentPath === "/" ? "/" : currentPath, Astro.site);
 const socialImageUrl = new URL("/brand/og.png", Astro.site);
 const pageTitle = title.replace(/\s+[—-]\s+dotcfg$/, "");
-const schema = currentPath === "/"
+const schema = customSchema ?? (currentPath === "/"
   ? createHomeSchema(description)
-  : createDocsSchema({ title: pageTitle, description, path: currentPath });
+  : createDocsSchema({ title: pageTitle, description, path: currentPath }));
+const tocItems = toc.filter((heading) => heading.depth === 2 || heading.depth === 3);
 const starCount = Number.isFinite(githubData.stars) && githubData.stars > 0 ? githubData.stars : null;
 const groups = [
   { label: "Basics", links: [["Getting started", "/getting-started"], ["Directory strategies", "/directory-strategies"], ["Formats", "/formats"]] },
   { label: "Core API", links: [["Loading & saving", "/loading-saving"], ["Key access", "/key-access"], ["Environment overrides", "/environment"]] },
   { label: "Examples", links: [["Examples", "/examples"]] },
+  { label: "Blog", links: [["Blog", "/blog"]] },
+  { label: "Go deeper", links: [["API reference ↗", "https://docs.rs/dotcfg"], ["crates.io ↗", "https://crates.io/crates/dotcfg"]] },
 ];
 ---
 
@@ -34,17 +48,46 @@ const groups = [
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width" />
     <meta name="theme-color" content="#fbfaf7" />
+    <script is:inline>
+      (() => {
+        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
+        let preference = 'system';
+        try { preference = localStorage.getItem('dotcfg-theme') || 'system'; } catch {}
+        if (!['light', 'dark', 'system'].includes(preference)) preference = 'system';
+        const applyTheme = () => {
+          const theme = preference === 'system' ? (systemTheme.matches ? 'dark' : 'light') : preference;
+          document.documentElement.dataset.theme = theme;
+          document.documentElement.style.colorScheme = theme;
+          const bg = getComputedStyle(document.documentElement).getPropertyValue('--background').trim();
+          document.querySelector('meta[name="theme-color"]')?.setAttribute('content', bg || (theme === 'dark' ? '#181817' : '#fbfaf7'));
+          document.querySelectorAll('[data-theme-select]').forEach((select) => { select.value = preference; });
+          document.querySelectorAll('[data-theme-favicon]').forEach((icon) => {
+            icon.href = '/brand/icon-' + theme + '.png';
+          });
+        };
+        applyTheme();
+        document.addEventListener('DOMContentLoaded', applyTheme);
+        systemTheme.addEventListener('change', applyTheme);
+        document.addEventListener('change', (event) => {
+          if (!event.target.matches('[data-theme-select]')) return;
+          preference = event.target.value;
+          try { localStorage.setItem('dotcfg-theme', preference); } catch {}
+          applyTheme();
+        });
+      })();
+    </script>
     <title>{title}</title>
     <meta name="description" content={description} />
+    <meta name="author" content="Spectra010s" />
     <meta name="robots" content="index, follow" />
+    <meta name="google-site-verification" content="-oHieeYQu6xGSIhnHW1QfQGRRFUikmwUrWl_oYU2xQg" />
     <link rel="canonical" href={canonicalUrl} />
 
-    <link rel="icon" href="/favicon.ico" sizes="any" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="icon" type="image/png" href="/brand/icon-light.png" data-theme-favicon />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="alternate" type="application/rss+xml" title="dotcfg blog" href="/rss.xml" />
 
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content={ogType} />
     <meta property="og:site_name" content="dotcfg" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
@@ -52,73 +95,79 @@ const groups = [
     <meta property="og:image" content={socialImageUrl} />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="600" />
-    <meta property="og:image:alt" content="dotcfg — Rust configuration, your way" />
+    <meta property="og:image:alt" content="dotcfg — Configuration management for Rust" />
+    {ogType === "article" && publishedAt && <meta property="article:published_time" content={publishedAt.toISOString()} />}
+    {ogType === "article" && modifiedAt && <meta property="article:modified_time" content={modifiedAt.toISOString()} />}
 
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:creator" content="@Spectra010s" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={socialImageUrl} />
-    <meta name="twitter:image:alt" content="dotcfg — Rust configuration, your way" />
+    <meta name="twitter:image:alt" content="dotcfg — Configuration management for Rust" />
 
     <script type="application/ld+json" set:html={JSON.stringify(schema)} />
   </head>
-  <body>
-    <div class="release-banner" role="status">
-      <strong>dotcfg 0.3.0 is out</strong>
-      <span>Custom directories and project config discovery are now available.</span>
-      <a href="/directory-strategies">See what’s new →</a>
+  <body class="[&.nav-open]:overflow-hidden">
+    <div class="flex min-h-[38px] items-center justify-center gap-2.5 border-b border-border bg-muted px-5 py-[7px] text-center text-[13px] text-muted-foreground" role="status">
+      <strong class="text-foreground">dotcfg 0.3.0 is out</strong>
+      <span class="max-[760px]:hidden">Custom directories and project config discovery are now available.</span>
+      <a class="whitespace-nowrap font-bold text-primary hover:underline" href="/directory-strategies">See what’s new →</a>
     </div>
-    <header class="topbar">
-      <a class="brand" href="/"><span>dot</span>cfg</a>
-      <div class="header-actions">
-        <a class="github-star" href="https://github.com/Spectra010s/dotcfg" aria-label={starCount ? `Star dotcfg on GitHub. ${starCount} stars.` : "Star dotcfg on GitHub"}>
-          <span class="star-icon" aria-hidden="true">☆{starCount && <span class="star-count">{starCount}</span>}</span>
-          <span>Star<span class="star-suffix"> on GitHub</span></span>
+    <header class="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-border bg-background/95 px-7 backdrop-blur-[10px] max-[760px]:px-4">
+      <a class="inline-flex items-center gap-2 text-[19px] font-bold tracking-[-0.02em] text-foreground" href="/"><img class="rounded-md dark:hidden" src="/brand/icon-light.png" alt="" width="30" height="30" /><img class="hidden rounded-md dark:block" src="/brand/icon-dark.png" alt="" width="30" height="30" /><span><span class="text-primary">dot</span>cfg</span></a>
+      <div class="flex shrink-0 items-center justify-end gap-2">
+        <a class="inline-flex h-9 items-center gap-2 whitespace-nowrap rounded-lg border border-border bg-card px-3 text-[13px] font-bold leading-none transition-colors hover:border-border-strong hover:bg-primary-foreground dark:hover:bg-muted max-[760px]:h-[34px] max-[760px]:gap-1.5 max-[760px]:px-2 max-[760px]:text-xs" href="https://github.com/Spectra010s/dotcfg" aria-label={starCount ? `Star dotcfg on GitHub. ${starCount} stars.` : "Star dotcfg on GitHub"}>
+          <span class="relative inline-flex items-center justify-center text-xl leading-none max-[760px]:text-[19px]" aria-hidden="true">☆{starCount && <span class="absolute -right-[11px] -top-2 flex h-[17px] min-w-[17px] items-center justify-center rounded-full border-2 border-background bg-primary px-1 text-[9px] font-extrabold leading-none text-white">{starCount}</span>}</span>
+          <span>Star<span class="max-[760px]:hidden"> on GitHub</span></span>
         </a>
-        <button class="menu-button" type="button" aria-label="Open documentation navigation" aria-controls="mobile-nav" aria-expanded="false" data-menu-open>
-          <span></span><span></span><span></span>
+        <button class="hidden h-[38px] w-[38px] shrink-0 cursor-pointer rounded-[7px] border-0 bg-transparent p-2 max-[760px]:block" type="button" aria-label="Open documentation navigation" aria-controls="mobile-nav" aria-expanded="false" data-menu-open>
+          <span class="mx-auto my-1 block h-[1.5px] w-[21px] bg-foreground"></span><span class="mx-auto my-1 block h-[1.5px] w-[21px] bg-foreground"></span><span class="mx-auto my-1 block h-[1.5px] w-[21px] bg-foreground"></span>
         </button>
       </div>
     </header>
 
-    <div class="nav-backdrop" data-nav-backdrop></div>
-    <aside class="mobile-nav" id="mobile-nav" aria-label="Documentation navigation" data-mobile-nav>
-      <div class="mobile-nav-header">
-        <a class="brand" href="/"><span>dot</span>cfg</a>
-        <button class="nav-close" type="button" aria-label="Close documentation navigation" data-menu-close>×</button>
-      </div>
-      <div class="mobile-nav-scroll">
-        {groups.map((group) => (
-          <section class="nav-group">
-            <p class="sidebar-title">{group.label}</p>
-            <nav>{group.links.map(([label, href]) => <a href={href} class:list={{ active: currentPath === href }}>{label}</a>)}</nav>
-          </section>
-        ))}
-      </div>
-    </aside>
+    <div class="invisible fixed inset-0 z-40 bg-foreground/30 opacity-0 transition-all max-[760px]:block max-[760px]:[&.open]:visible max-[760px]:[&.open]:opacity-100" data-nav-backdrop></div>
 
-    <div class="shell">
-      <aside class="sidebar">
-        <div class="sidebar-scroll">
+    <div class="mx-auto grid max-w-[1600px] grid-cols-[220px_minmax(0,1fr)_180px] gap-[42px] px-7 pb-16 pt-[42px] max-[1200px]:grid-cols-[220px_minmax(0,1fr)] max-[900px]:grid-cols-[210px_minmax(0,1fr)] max-[900px]:gap-7 max-[760px]:block max-[760px]:px-5 max-[760px]:pb-11 max-[760px]:pt-[30px]">
+      <aside class="sticky top-[94px] max-h-[calc(100vh-122px)] overflow-y-auto max-[760px]:fixed max-[760px]:inset-y-0 max-[760px]:left-0 max-[760px]:z-50 max-[760px]:flex max-[760px]:max-h-none max-[760px]:w-[min(84vw,320px)] max-[760px]:-translate-x-[102%] max-[760px]:flex-col max-[760px]:overflow-visible max-[760px]:bg-background max-[760px]:shadow-[18px_0_50px_rgba(32,32,29,0.12)] max-[760px]:transition-transform max-[760px]:duration-200 max-[760px]:[&.open]:translate-x-0" id="mobile-nav" aria-label="Documentation navigation" data-mobile-nav>
+      <div class="hidden h-16 items-center justify-between border-b border-border px-[18px] max-[760px]:flex">
+        <a class="inline-flex items-center gap-2 text-[19px] font-bold tracking-[-0.02em] text-foreground" href="/"><img class="rounded-md dark:hidden" src="/brand/icon-light.png" alt="" width="30" height="30" /><img class="hidden rounded-md dark:block" src="/brand/icon-dark.png" alt="" width="30" height="30" /><span><span class="text-primary">dot</span>cfg</span></a>
+        <button class="cursor-pointer border-0 bg-transparent px-2 py-[5px] text-[28px] leading-none text-muted-foreground" type="button" aria-label="Close documentation navigation" data-menu-close>×</button>
+      </div>
+        <div class="grid min-h-0 gap-[26px] overflow-y-auto pb-5 max-[760px]:flex-1 max-[760px]:flex-col max-[760px]:gap-0 max-[760px]:px-[18px] max-[760px]:pb-8 max-[760px]:pt-6">
           {groups.map((group) => (
-            <section class="nav-group">
-              <p class="sidebar-title">{group.label}</p>
-              <nav>{group.links.map(([label, href]) => <a href={href} class:list={{ active: currentPath === href }}>{label}</a>)}</nav>
+            <section class="block max-[760px]:mb-7">
+              <p class="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">{group.label}</p>
+              <nav class="grid gap-[3px]">{group.links.map(([label, href]) => <a class:list={["rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground max-[760px]:px-2.5 max-[760px]:py-[9px] max-[760px]:text-[15px]", { "bg-muted font-bold text-foreground": currentPath === href || (href === "/blog" && currentPath.startsWith("/blog/")) }]} href={href}>{label}</a>)}</nav>
             </section>
           ))}
         </div>
+        <div class="sticky bottom-0 mt-5 shrink-0 border-t border-border bg-background px-2 pb-4 pt-5 text-muted-foreground max-[760px]:mt-0 max-[760px]:px-[18px] max-[760px]:pt-4">
+          <ThemeToggle />
+          <p class="mb-2 text-[13px] font-bold leading-[1.45] text-foreground">A small crate.<br />A little less config code.</p>
+          <span class="text-[11px] tracking-[0.02em]">MIT / Apache-2.0</span>
+        </div>
       </aside>
-      <div class="content-column">
-        <main><slot /></main>
-        <footer class="site-footer">
-          <nav aria-label="dotcfg external links">
-            <a href="https://docs.rs/dotcfg">API Reference <span>↗</span></a>
-            <a href="https://crates.io/crates/dotcfg">crates.io <span>↗</span></a>
-            <a href="https://github.com/Spectra010s/dotcfg">GitHub <span>↗</span></a>
+      <div class="min-w-0">
+        <main class="min-w-0"><slot /></main>
+        <footer class="mt-[72px] flex items-end justify-between gap-7 border-t border-border pb-1.5 pt-[26px] text-[13px] text-muted-foreground max-[760px]:mt-14 max-[760px]:flex-col max-[760px]:items-start max-[760px]:gap-[18px]">
+          <nav class="flex flex-wrap gap-[18px] max-[760px]:gap-x-4 max-[760px]:gap-y-2.5" aria-label="dotcfg external links">
+            <a class="hover:text-foreground" href="https://docs.rs/dotcfg">API Reference <span>↗</span></a>
+            <a class="hover:text-foreground" href="https://crates.io/crates/dotcfg">crates.io <span>↗</span></a>
+            <a class="hover:text-foreground" href="https://github.com/Spectra010s/dotcfg">GitHub <span>↗</span></a>
           </nav>
-          <p>Built by <a href="https://github.com/Spectra010s">Spectra010s <span>↗</span></a></p>
+          <p class="m-0 whitespace-nowrap max-[760px]:whitespace-normal">Built by <a class="font-bold text-primary" href="https://github.com/Spectra010s">Spectra010s <span>↗</span></a></p>
         </footer>
       </div>
+      <aside class="sticky top-[94px] h-max max-h-[calc(100vh-122px)] overflow-y-auto pt-0.5 max-[1200px]:hidden" aria-label="On this page" data-page-toc class:list={{ "has-server-toc": tocItems.length > 0 }}>
+        <p class="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">On this page</p>
+        <nav class="grid gap-[3px]" data-page-toc-nav>
+          {tocItems.map((heading) => (
+            <a href={`#${heading.slug}`} class:list={["py-[5px] text-xs leading-[1.4] text-muted-foreground hover:text-foreground", { "pl-3": heading.depth === 3 }]}>{heading.text}</a>
+          ))}
+        </nav>
+      </aside>
     </div>
 
     <script is:inline>
@@ -137,6 +186,36 @@ const groups = [
       backdrop?.addEventListener('click', () => setNavOpen(false));
       nav?.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => setNavOpen(false)));
       document.addEventListener('keydown', (event) => { if (event.key === 'Escape') setNavOpen(false); });
+
+      const toc = document.querySelector('[data-page-toc]');
+      const tocNav = toc?.querySelector('[data-page-toc-nav]');
+      if (toc && tocNav && !toc.classList.contains('has-server-toc')) {
+        const headings = [...document.querySelectorAll('main h2, main h3')];
+        const used = new Set();
+        const slugify = (value) => {
+          const base = value.toLowerCase().trim()
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-') || 'section';
+          let slug = base;
+          let index = 2;
+          while (used.has(slug) || document.getElementById(slug)) {
+            slug = `${base}-${index++}`;
+          }
+          used.add(slug);
+          return slug;
+        };
+        headings.forEach((heading) => {
+          if (!heading.id) heading.id = slugify(heading.textContent || 'section');
+          else used.add(heading.id);
+          const link = document.createElement('a');
+          link.href = `#${heading.id}`;
+          link.textContent = heading.textContent || '';
+          link.className = 'py-[5px] text-xs leading-[1.4] text-muted-foreground hover:text-foreground' + (heading.tagName === 'H3' ? ' pl-3' : '');
+          tocNav.appendChild(link);
+        });
+        if (headings.length === 0) toc.hidden = true;
+      }
     </script>
   </body>
 </html>

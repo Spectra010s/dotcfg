@@ -1,6 +1,7 @@
 ---
 import DocsLayout from "../layouts/DocsLayout.astro";
 import CodeBlock from "../components/CodeBlock.astro";
+import Callout from "../components/Callout.astro";
 const dotExample = `let cfg = DotCfg::new("mytool");
 // ~/.mytool/config.toml
 
@@ -23,33 +24,35 @@ const ancestorFromExample = `let cfg = DotCfg::new("mytool")
     .find_in_ancestors_from("/tmp/project/src")?;`;
 ---
 <DocsLayout title="Directory strategies — dotcfg" description="Choose exactly where dotcfg stores or discovers configuration.">
-  <article class="prose">
-    <span class="eyebrow">Configuration</span><h1>Directory strategies</h1>
-    <p class="lead">The directory strategy answers one question: where should this application's config live? dotcfg does not merge several locations behind your back—you choose the behavior you want.</p>
+  <article class="[&_p]:max-w-[720px]">
+    <span class="text-[13px] font-bold text-primary">Configuration</span><h1 class="m-0 mb-5 mt-3 text-[clamp(38px,7vw,64px)] leading-[1.02] tracking-[-0.045em] max-[760px]:text-[44px]">Directory strategies</h1>
+    <p class="max-w-[680px] text-xl text-muted-foreground max-[760px]:text-lg">The directory strategy answers one question: where should this application's config live? dotcfg does not merge several locations behind your back—you choose the behavior you want.</p>
 
-    <h2>Home dot directory</h2>
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">Home dot directory</h2>
     <p>This is the default. It places the application directory directly under your home directory, similar to familiar directories such as <code>.cargo</code> and <code>.ssh</code>.</p>
     <CodeBlock label="Rust" code={dotExample} />
 
-    <h2>XDG configuration</h2>
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">XDG configuration</h2>
     <p>Use <code>.xdg()</code> when your application should follow the platform's XDG configuration strategy. dotcfg delegates this resolution to <code>etcetera</code> rather than manually assuming one path on every operating system.</p>
     <CodeBlock label="Rust" code={xdgExample} />
 
-    <h2>Custom directory <span class="version-badge">Since 0.3.0</span></h2>
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">Custom directory <span class="ml-[7px] inline-block rounded-full border border-accent-tint px-[7px] py-[3px] align-middle text-[11px] font-bold tracking-normal text-primary">Since 0.3.0</span></h2>
     <p><code>.at_dir()</code> bypasses both the dot and XDG strategies. The directory you provide is used exactly as the config directory; dotcfg only appends the configured filename and extension.</p>
     <CodeBlock label="Project-local config" code={customExample} />
-    <div class="note"><strong>Exact means exact</strong><p><code>.at_dir("./settings")</code> does not add <code>mytool</code>, expand <code>~</code>, or expand environment variables. Relative paths remain relative to the process working directory.</p></div>
+    <Callout type="info" title="Exact means exact">
+      <p><code>.at_dir("./settings")</code> does not add <code>mytool</code>, expand <code>~</code>, or expand environment variables. Relative paths remain relative to the process working directory.</p>
+    </Callout>
 
-    <h2>Discover a project config <span class="version-badge">Since 0.3.0</span></h2>
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">Discover a project config <span class="ml-[7px] inline-block rounded-full border border-accent-tint px-[7px] py-[3px] align-middle text-[11px] font-bold tracking-normal text-primary">Since 0.3.0</span></h2>
     <p><code>find_in_ancestors()</code> was introduced in 0.3.0 for tools that can run from anywhere inside a project. It starts at the current working directory and walks upward. At each level it looks for <code>.mytool/config.toml</code> (or your selected filename and format).</p>
     <CodeBlock label="Rust" code={ancestorExample} />
     <p>The starting directory itself is checked first. If nothing is found, the method returns <code>Ok(None)</code>; it does not silently fall back to your home or XDG directory.</p>
 
-    <h3>Start somewhere specific <span class="version-badge">Since 0.3.0</span></h3>
+    <h3 class="mb-2 mt-[34px] text-xl tracking-[-0.015em]">Start somewhere specific <span class="ml-[7px] inline-block rounded-full border border-accent-tint px-[7px] py-[3px] align-middle text-[11px] font-bold tracking-normal text-primary">Since 0.3.0</span></h3>
     <p><code>find_in_ancestors_from()</code> is the same search with an explicit starting path. This is useful when your program already knows the project path, and it makes tests deterministic.</p>
     <CodeBlock label="Rust" code={ancestorFromExample} />
 
-    <h2>Which should I use?</h2>
-    <div class="choice-grid"><div><strong>Dot</strong><p>Simple CLI or personal application config.</p></div><div><strong>XDG</strong><p>Applications that should follow platform config conventions.</p></div><div><strong>Custom</strong><p>Tests, portable setups, or a known project directory.</p></div><div><strong>Ancestor search</strong><p>Developer tools that discover project-local config from nested directories.</p></div></div>
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">Which should I use?</h2>
+    <div class="my-5 grid grid-cols-2 gap-2.5 max-[760px]:grid-cols-1"><div class="rounded-[9px] border border-border bg-card p-4"><strong class="mb-[7px] block w-max">Dot</strong><p class="m-0 text-sm text-muted-foreground">Simple CLI or personal application config.</p></div><div class="rounded-[9px] border border-border bg-card p-4"><strong class="mb-[7px] block w-max">XDG</strong><p class="m-0 text-sm text-muted-foreground">Applications that should follow platform config conventions.</p></div><div class="rounded-[9px] border border-border bg-card p-4"><strong class="mb-[7px] block w-max">Custom</strong><p class="m-0 text-sm text-muted-foreground">Tests, portable setups, or a known project directory.</p></div><div class="rounded-[9px] border border-border bg-card p-4"><strong class="mb-[7px] block w-max">Ancestor search</strong><p class="m-0 text-sm text-muted-foreground">Developer tools that discover project-local config from nested directories.</p></div></div>
   </article>
 </DocsLayout>

@@ -19,18 +19,18 @@ let active = AppConfig {
 };`;
 ---
 <DocsLayout title="Examples — dotcfg" description="Small, practical dotcfg recipes you can adapt to real Rust applications.">
-  <article class="prose">
-    <span class="eyebrow">Recipes</span><h1>Examples</h1>
-    <p class="lead">These are intentionally small snippets: copy the pattern you need, then shape the config type around your application. As real-world dotcfg integrations appear, this page can grow a separate showcase without turning the core docs into a gallery.</p>
+  <article class="[&_p]:max-w-[720px]">
+    <span class="text-[13px] font-bold text-primary">Recipes</span><h1 class="m-0 mb-5 mt-3 text-[clamp(38px,7vw,64px)] leading-[1.02] tracking-[-0.045em] max-[760px]:text-[44px]">Examples</h1>
+    <p class="max-w-[680px] text-xl text-muted-foreground max-[760px]:text-lg">These are intentionally small snippets: copy the pattern you need, then shape the config type around your application. As real-world dotcfg integrations appear, this page can grow a separate showcase without turning the core docs into a gallery.</p>
 
-    <div class="recipe-list">
-      {recipes.map((recipe) => <section class="recipe"><h2>{recipe.title}</h2><p>{recipe.text}</p><CodeBlock label="Rust" code={recipe.code} /></section>)}
+    <div>
+      {recipes.map((recipe) => <section class="border-b border-border pb-3 first:mt-[42px]"><h2 class="mb-0 mt-0 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">{recipe.title}</h2><p class="text-muted-foreground">{recipe.text}</p><CodeBlock label="Rust" code={recipe.code} /></section>)}
     </div>
 
-    <h2>CLI flags over saved config</h2>
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">CLI flags over saved config</h2>
     <p>The repository includes a complete Clap example using a common precedence pattern: CLI argument → config file → default value.</p>
     <CodeBlock label="Pattern" code={cliPattern} />
 
-    <p class="next-link"><a class="inline-link" href="https://github.com/Spectra010s/dotcfg/tree/main/examples">Browse the repository examples ↗</a></p>
+    <p class="mt-[26px]"><a class="font-bold text-primary" href="https://github.com/Spectra010s/dotcfg/tree/main/examples">Browse the repository examples ↗</a></p>
   </article>
 </DocsLayout>

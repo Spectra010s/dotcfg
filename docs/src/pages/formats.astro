@@ -1,32 +1,35 @@
 ---
 import DocsLayout from "../layouts/DocsLayout.astro";
 import CodeBlock from "../components/CodeBlock.astro";
+import Callout from "../components/Callout.astro";
 ---
 <DocsLayout title="Configuration formats — dotcfg" description="Use TOML, JSON, or YAML with one dotcfg API.">
-  <article class="prose">
-    <span class="eyebrow">Configuration</span><h1>Configuration formats</h1>
-    <p class="lead">dotcfg keeps the API the same while the file format changes. TOML is enabled by default; JSON and YAML are opt-in Cargo features.</p>
+  <article class="[&_p]:max-w-[720px]">
+    <span class="text-[13px] font-bold text-primary">Configuration</span><h1 class="m-0 mb-5 mt-3 text-[clamp(38px,7vw,64px)] leading-[1.02] tracking-[-0.045em] max-[760px]:text-[44px]">Configuration formats</h1>
+    <p class="max-w-[680px] text-xl text-muted-foreground max-[760px]:text-lg">dotcfg keeps the API the same while the file format changes. TOML is enabled by default; JSON and YAML are opt-in Cargo features.</p>
 
-    <h2>TOML — default</h2>
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">TOML — default</h2>
     <CodeBlock label="Cargo.toml" code={'[dependencies]\ndotcfg = "0.3.0"'} />
     <p><code>DotCfg::new("mytool")</code> selects TOML when the default features are enabled. You can also call <code>.toml()</code> explicitly.</p>
 
-    <h2>JSON</h2>
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">JSON</h2>
     <CodeBlock label="Cargo.toml" code={'[dependencies]\ndotcfg = { version = "0.3.0", features = ["json"] }'} />
     <CodeBlock label="Rust" code={'let cfg = DotCfg::new("mytool").json();\n// ~/.mytool/config.json'} />
 
-    <h2>YAML</h2>
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">YAML</h2>
     <CodeBlock label="Cargo.toml" code={'[dependencies]\ndotcfg = { version = "0.3.0", features = ["yaml"] }'} />
     <CodeBlock label="Rust" code={'let cfg = DotCfg::new("mytool").yaml();\n// ~/.mytool/config.yaml'} />
 
-    <h2>Enable several formats</h2>
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">Enable several formats</h2>
     <p>Cargo features are additive. Enabling JSON does not disable the default TOML feature. If your program needs all three formats, enable JSON and YAML alongside the default.</p>
     <CodeBlock label="Cargo.toml" code={'dotcfg = { version = "0.3.0", features = ["json", "yaml"] }'} />
 
-    <h2>Use your own filename</h2>
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">Use your own filename</h2>
     <p><code>.filename()</code> accepts the filename without an extension. dotcfg adds the extension that matches the selected format.</p>
     <CodeBlock label="Rust" code={'let cfg = DotCfg::new("mytool")\n    .json()\n    .filename("settings");\n\n// ~/.mytool/settings.json'} />
 
-    <div class="note"><strong>At least one format is required</strong><p>If you disable default features, enable <code>toml</code>, <code>json</code>, or <code>yaml</code> yourself. dotcfg intentionally fails compilation when no format feature is available.</p></div>
+    <Callout type="warning" title="At least one format is required">
+      <p>If you disable default features, enable <code>toml</code>, <code>json</code>, or <code>yaml</code> yourself. dotcfg intentionally fails compilation when no format feature is available.</p>
+    </Callout>
   </article>
 </DocsLayout>
