@@ -143,8 +143,8 @@ const groups = [
     </aside>
 
     <div class="mx-auto grid max-w-[1600px] grid-cols-[220px_minmax(0,1fr)_180px] gap-[42px] px-7 pb-16 pt-[42px] max-[1200px]:grid-cols-[220px_minmax(0,1fr)] max-[900px]:grid-cols-[210px_minmax(0,1fr)] max-[900px]:gap-7 max-[760px]:block max-[760px]:px-5 max-[760px]:pb-11 max-[760px]:pt-[30px]">
-      <aside class="sticky top-[94px] max-h-[calc(100vh-122px)] overflow-y-auto max-[760px]:hidden">
-        <div class="grid gap-[26px] pb-5">
+      <aside class="sticky top-[94px] flex max-h-[calc(100vh-122px)] flex-col max-[760px]:hidden">
+        <div class="grid min-h-0 flex-1 gap-[26px] overflow-y-auto pb-5">
           {groups.map((group) => (
             <section class="block">
               <p class="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">{group.label}</p>
@@ -152,7 +152,7 @@ const groups = [
             </section>
           ))}
         </div>
-        <div class="mt-5 border-t border-border px-2 pb-1 pt-5 text-muted-foreground">
+        <div class="mt-5 shrink-0 border-t border-border px-2 pb-1 pt-5 text-muted-foreground">
           <ThemeToggle />
           <p class="mb-2 text-[13px] font-bold leading-[1.45] text-foreground">A small crate.<br />A little less config code.</p>
           <span class="text-[11px] tracking-[0.02em]">MIT / Apache-2.0</span>
