@@ -131,7 +131,7 @@ const groups = [
         <a class="inline-flex items-center gap-2 text-[19px] font-bold tracking-[-0.02em] text-foreground" href="/"><img class="rounded-md dark:hidden" src="/brand/icon-light.png" alt="" width="30" height="30" /><img class="hidden rounded-md dark:block" src="/brand/icon-dark.png" alt="" width="30" height="30" /><span><span class="text-primary">dot</span>cfg</span></a>
         <button class="cursor-pointer border-0 bg-transparent px-2 py-[5px] text-[28px] leading-none text-muted-foreground" type="button" aria-label="Close documentation navigation" data-menu-close>×</button>
       </div>
-      <div class="overflow-y-auto px-[18px] pb-8 pt-6">
+      <div class="min-h-0 flex-1 overflow-y-auto px-[18px] pb-8 pt-6">
         {groups.map((group) => (
           <section class="mb-7 block">
             <p class="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">{group.label}</p>
@@ -139,12 +139,12 @@ const groups = [
           </section>
         ))}
       </div>
-      <div class="border-t border-border px-[18px] pb-0 pt-4"><ThemeToggle /></div>
+      <div class="shrink-0 border-t border-border bg-background px-[18px] pb-4 pt-4"><ThemeToggle /><p class="mb-2 mt-4 text-[13px] font-bold leading-[1.45] text-foreground">A small crate.<br />A little less config code.</p><span class="text-[11px] tracking-[0.02em] text-muted-foreground">MIT / Apache-2.0</span></div>
     </aside>
 
     <div class="mx-auto grid max-w-[1600px] grid-cols-[220px_minmax(0,1fr)_180px] gap-[42px] px-7 pb-16 pt-[42px] max-[1200px]:grid-cols-[220px_minmax(0,1fr)] max-[900px]:grid-cols-[210px_minmax(0,1fr)] max-[900px]:gap-7 max-[760px]:block max-[760px]:px-5 max-[760px]:pb-11 max-[760px]:pt-[30px]">
-      <aside class="sticky top-[94px] flex max-h-[calc(100vh-122px)] flex-col max-[760px]:hidden">
-        <div class="grid min-h-0 flex-1 gap-[26px] overflow-y-auto pb-5">
+      <aside class="sticky top-[94px] max-h-[calc(100vh-122px)] overflow-y-auto max-[760px]:hidden">
+        <div class="grid gap-[26px] pb-5">
           {groups.map((group) => (
             <section class="block">
               <p class="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">{group.label}</p>
@@ -152,7 +152,7 @@ const groups = [
             </section>
           ))}
         </div>
-        <div class="mt-5 shrink-0 border-t border-border px-2 pb-1 pt-5 text-muted-foreground">
+        <div class="sticky bottom-0 mt-5 border-t border-border bg-background px-2 pb-4 pt-5 text-muted-foreground">
           <ThemeToggle />
           <p class="mb-2 text-[13px] font-bold leading-[1.45] text-foreground">A small crate.<br />A little less config code.</p>
           <span class="text-[11px] tracking-[0.02em]">MIT / Apache-2.0</span>
