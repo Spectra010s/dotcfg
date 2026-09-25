@@ -18,25 +18,25 @@ const schema = createBlogIndexSchema({
   schema={schema}
 >
   <section class="mt-2">
-    <header class="mb-[42px] max-w-[680px] max-[760px]:mb-[30px]">
-      <p class="text-[13px] font-bold text-primary">Blog</p>
-      <h1 class="m-0 my-2 text-[clamp(38px,5vw,54px)]">Notes from building dotcfg</h1>
-      <p class="m-0 text-lg text-muted-foreground max-[760px]:text-base">Design decisions, practical configuration patterns, and deeper looks at dotcfg features.</p>
+    <header class="mb-12 max-w-[680px] max-[760px]:mb-8">
+      <p class="text-[13px] font-bold uppercase tracking-[0.08em] text-primary">Blog</p>
+      <h1 class="m-0 my-3 text-[clamp(42px,5vw,58px)] leading-[1.02] tracking-[-0.03em]">Notes from building dotcfg</h1>
+      <p class="m-0 text-xl leading-relaxed text-muted-foreground max-[760px]:text-lg">Design decisions, practical configuration patterns, and deeper looks at dotcfg features.</p>
     </header>
 
     <div class="border-t border-border">
       {posts.map((post) => (
         <article class="border-b border-border">
-          <a href={`/blog/${post.id}/`} class="block px-1 py-[26px] pb-7 transition-all hover:pl-2 max-[760px]:py-[22px] max-[760px]:px-0 max-[760px]:hover:pl-0">
-            <div class="flex flex-wrap gap-x-[14px] gap-y-2 text-xs text-muted-foreground">
-              <time datetime={post.data.publishedAt.toISOString()}>
+          <a href={`/blog/${post.id}/`} class="group block px-1 py-8 transition-all hover:pl-2 max-[760px]:py-6 max-[760px]:px-0 max-[760px]:hover:pl-0">
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
+              <time class="uppercase tracking-[0.08em]" datetime={post.data.publishedAt.toISOString()}>
                 {post.data.publishedAt.toLocaleDateString("en", { year: "numeric", month: "short", day: "numeric" })}
               </time>
-              {post.data.version && <span class="rounded-full border border-border px-[7px] py-0.5">dotcfg {post.data.version}</span>}
+              {post.data.version && <span class="rounded-full bg-primary px-2.5 py-0.5 font-bold text-primary-foreground">dotcfg {post.data.version}</span>}
             </div>
-            <h2 class="my-2 mx-0 mb-2 text-[25px] max-[760px]:text-[22px]">{post.data.title}</h2>
-            <p class="m-0 max-w-[650px] text-muted-foreground">{post.data.description}</p>
-            <span class="mt-[14px] inline-block text-[13px] font-bold text-primary">Read article →</span>
+            <h2 class="my-3 mx-0 text-[28px] leading-[1.15] tracking-[-0.02em] max-[760px]:text-[24px]">{post.data.title}</h2>
+            <p class="m-0 max-w-[650px] text-[17px] leading-relaxed text-muted-foreground">{post.data.description}</p>
+            <span class="mt-4 inline-block text-sm font-bold text-primary group-hover:underline">Read article →</span>
           </a>
         </article>
       ))}

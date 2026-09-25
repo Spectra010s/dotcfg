@@ -40,17 +40,17 @@ const schema = createBlogPostSchema({
   toc={headings}
 >
   <article class="mt-1">
-    <header class="mb-[42px] border-b border-border pb-[30px] max-[760px]:mb-[34px] max-[760px]:pb-6">
-      <a class="mb-6 inline-block text-[13px] font-bold text-primary" href="/blog">← Blog</a>
-      <h1 class="m-0 mb-4 text-[clamp(38px,5.5vw,58px)] max-[760px]:text-[40px]">{title}</h1>
-      <p class="mb-[18px] max-w-[680px] text-[19px] leading-[1.55] text-muted-foreground max-[760px]:text-[17px]">{description}</p>
-      <div class="flex flex-wrap gap-x-[14px] gap-y-2 text-xs text-muted-foreground">
-        <time datetime={publishedAt.toISOString()}>{formattedDate}</time>
-        {version && <span class="rounded-full border border-border px-[7px] py-0.5">dotcfg {version}</span>}
-        {tags.map((tag) => <span class="rounded-full border border-border px-[7px] py-0.5">{tag}</span>)}
+    <header class="mb-10 border-b border-border pb-8 max-[760px]:mb-8 max-[760px]:pb-6">
+      <a class="mb-8 inline-block text-[13px] font-bold text-primary" href="/blog">← All articles</a>
+      <h1 class="m-0 mb-5 text-[clamp(40px,5.5vw,60px)] leading-[1.04] tracking-[-0.03em] max-[760px]:text-[40px]">{title}</h1>
+      <p class="mb-6 max-w-[680px] text-xl leading-relaxed text-muted-foreground max-[760px]:text-lg">{description}</p>
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
+        <time class="uppercase tracking-[0.08em]" datetime={publishedAt.toISOString()}>{formattedDate}</time>
+        {version && <span class="rounded-full bg-primary px-2.5 py-0.5 font-bold text-primary-foreground">dotcfg {version}</span>}
+        {tags.map((tag) => <span class="rounded-full border border-border px-2.5 py-0.5">#{tag}</span>)}
       </div>
     </header>
-    <div class="max-w-[720px] max-[760px]:max-w-none [&>h2]:mb-0 [&>h2]:mt-[52px] [&>h2]:text-[26px] [&>h2]:leading-[1.15] [&>h2]:tracking-[-0.025em] [&>h3]:mb-2 [&>h3]:mt-9 [&>h3]:text-xl [&>h3]:tracking-[-0.015em] [&_li]:text-prose [&_p]:max-w-[720px] [&_p]:text-prose dark:[&_li]:text-foreground dark:[&_p]:text-foreground [&_a]:font-bold [&_a]:text-primary [&_a]:underline [&_a]:decoration-accent-tint [&_a]:underline-offset-[3px] [&>pre]:my-5 [&>pre]:overflow-x-auto [&>pre]:rounded-[10px] [&>pre]:border [&>pre]:border-code-border [&>pre]:bg-code-dark [&>pre]:font-mono [&>pre]:text-sm [&>pre]:leading-[1.65] [&>pre]:text-code-foreground [&>pre>code]:bg-transparent [&>pre>code]:p-0 [&_:not(pre)>code]:rounded-[5px] [&_:not(pre)>code]:bg-muted [&_:not(pre)>code]:px-[0.35rem] [&_:not(pre)>code]:py-[0.12rem] [&_:not(pre)>code]:font-mono [&_:not(pre)>code]:text-foreground [&>blockquote]:my-6 [&>blockquote]:rounded-r-lg [&>blockquote]:border-l-[3px] [&>blockquote]:border-primary [&>blockquote]:bg-muted [&>blockquote]:px-[18px] [&>blockquote]:py-[14px] [&>blockquote]:text-muted-foreground [&>table]:my-6 [&>table]:w-full [&>table]:text-sm [&_th]:border-b [&_th]:border-border [&_th]:px-3 [&_th]:py-2.5 [&_th]:text-left [&_th]:font-bold [&_td]:border-b [&_td]:border-border [&_td]:px-3 [&_td]:py-2.5 [&_td]:align-top">
+    <div class="max-w-[720px] text-[17px] leading-[1.8] max-[760px]:max-w-none [&>h2]:mb-0 [&>h2]:mt-14 [&>h2]:text-[28px] [&>h2]:leading-[1.15] [&>h2]:tracking-[-0.025em] [&>h3]:mb-2 [&>h3]:mt-10 [&>h3]:text-xl [&>h3]:tracking-[-0.015em] [&_li]:my-1 [&_li]:text-[#34332f] [&_p]:max-w-[720px] [&_p]:text-[#34332f] dark:[&_li]:text-foreground dark:[&_p]:text-foreground [&_a]:font-bold [&_a]:text-primary [&_a]:underline [&_a]:decoration-accent-tint [&_a]:underline-offset-[3px] [&>pre]:my-6 [&>pre]:overflow-x-auto [&>pre]:rounded-[10px] [&>pre]:border [&>pre]:border-code-border [&>pre]:bg-code-dark [&>pre]:font-mono [&>pre]:text-sm [&>pre]:leading-[1.65] [&>pre]:text-code-foreground [&>pre>code]:bg-transparent [&>pre>code]:p-0 [&_:not(pre)>code]:rounded-[5px] [&_:not(pre)>code]:bg-muted [&_:not(pre)>code]:px-[0.35rem] [&_:not(pre)>code]:py-[0.12rem] [&_:not(pre)>code]:font-mono [&_:not(pre)>code]:text-foreground [&>blockquote]:my-6 [&>blockquote]:rounded-r-lg [&>blockquote]:border-l-[3px] [&>blockquote]:border-primary [&>blockquote]:bg-muted [&>blockquote]:px-[18px] [&>blockquote]:py-[14px] [&>blockquote]:text-muted-foreground [&>table]:my-6 [&>table]:w-full [&>table]:text-sm [&_th]:border-b [&_th]:border-border [&_th]:px-3 [&_th]:py-2.5 [&_th]:text-left [&_th]:font-bold [&_td]:border-b [&_td]:border-border [&_td]:px-3 [&_td]:py-2.5 [&_td]:align-top">
       <slot />
     </div>
   </article>
