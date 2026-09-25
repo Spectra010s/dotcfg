@@ -1,6 +1,7 @@
 ---
 import DocsLayout from "../layouts/DocsLayout.astro";
 import CodeBlock from "../components/CodeBlock.astro";
+import Callout from "../components/Callout.astro";
 ---
 <DocsLayout title="Key access — dotcfg" description="Read and update individual flat or nested config values, with typed access when needed.">
   <article class="[&_p]:max-w-[720px]">
@@ -24,6 +25,8 @@ import CodeBlock from "../components/CodeBlock.astro";
     <CodeBlock label="Rust" code={'cfg.set_val("port", 8080u16)?;\ncfg.set_val("plugins", vec!["fmt", "lint"])?;\ncfg.set_val("features.auto_update", true)?;'} />
     <p>This matters because <code>set("port", "8080")</code> is a string-oriented write, while <code>set_val("port", 8080u16)</code> stores a native numeric value.</p>
 
-    <div class="my-6 rounded-r-lg border-l-[3px] border-primary bg-muted px-[18px] py-[15px] dark:bg-muted"><strong class="block">A useful rule</strong><p class="mt-[3px] text-muted-foreground">Use <code>get/set</code> for string settings and <code>get_as/set_val</code> when the Rust type matters. Use <code>load/save</code> when you are working with the whole configuration struct.</p></div>
+    <Callout type="info" title="A useful rule">
+      <p>Use <code>get/set</code> for string settings and <code>get_as/set_val</code> when the Rust type matters. Use <code>load/save</code> when you are working with the whole configuration struct.</p>
+    </Callout>
   </article>
 </DocsLayout>

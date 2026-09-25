@@ -1,6 +1,7 @@
 ---
 import DocsLayout from "../layouts/DocsLayout.astro";
 import CodeBlock from "../components/CodeBlock.astro";
+import Callout from "../components/Callout.astro";
 const dependencyConfig = `[dependencies]
 dotcfg = "0.3.0"
 serde = { version = "1", features = ["derive"] }`;
@@ -31,7 +32,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     <p>TOML support is enabled by default. You also need <code>serde</code> with its derive feature so Rust can turn your struct into config data and back again.</p>
     <CodeBlock label="Cargo.toml" code={dependencyConfig} />
 
-    <div class="my-6 rounded-r-lg border-l-[3px] border-primary bg-muted px-[18px] py-[15px] dark:bg-muted"><strong class="block">New in 0.3.0</strong><p class="mt-[3px] text-muted-foreground">dotcfg 0.3.0 adds custom configuration directories and project config discovery. See <a class="font-bold text-primary" href="/directory-strategies">Directory strategies</a> for <code>at_dir()</code>, <code>find_in_ancestors()</code>, and <code>find_in_ancestors_from()</code>.</p></div>
+    <Callout type="info" title="New in 0.3.0">
+      <p>dotcfg 0.3.0 adds custom configuration directories and project config discovery. See <a class="font-bold text-primary" href="/directory-strategies">Directory strategies</a> for <code>at_dir()</code>, <code>find_in_ancestors()</code>, and <code>find_in_ancestors_from()</code>.</p>
+    </Callout>
 
     <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">2. Define your configuration</h2>
     <p><code>Serialize</code> means the struct can be written to a file. <code>Deserialize</code> means it can be reconstructed from that file. <code>Default</code> is only needed when you want <code>load_or_default()</code> to create a starting config automatically.</p>

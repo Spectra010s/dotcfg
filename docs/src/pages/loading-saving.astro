@@ -1,6 +1,7 @@
 ---
 import DocsLayout from "../layouts/DocsLayout.astro";
 import CodeBlock from "../components/CodeBlock.astro";
+import Callout from "../components/Callout.astro";
 const defaultExample = `#[derive(Serialize, Deserialize, Default)]
 struct AppConfig {
     theme: String,
@@ -39,6 +40,8 @@ if let Some(config) = config {
     <p><code>save()</code> serializes your struct in the selected format. The config directory is created automatically when it does not exist.</p>
     <CodeBlock label="Rust" code={saveExample} />
 
-    <div class="my-6 rounded-r-lg border-l-[3px] border-primary bg-muted px-[18px] py-[15px] dark:bg-muted"><strong class="block">Whole config vs one key</strong><p class="mt-[3px] text-muted-foreground">Use <code>save()</code> when your program already has the complete config struct. If you only need to change one field while preserving everything else, use <a class="font-bold text-primary" href="/key-access"><code>set()</code> or <code>set_val()</code></a>.</p></div>
+    <Callout type="info" title="Whole config vs one key">
+      <p>Use <code>save()</code> when your program already has the complete config struct. If you only need to change one field while preserving everything else, use <a class="font-bold text-primary" href="/key-access"><code>set()</code> or <code>set_val()</code></a>.</p>
+    </Callout>
   </article>
 </DocsLayout>

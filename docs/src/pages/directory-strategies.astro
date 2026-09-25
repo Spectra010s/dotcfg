@@ -1,6 +1,7 @@
 ---
 import DocsLayout from "../layouts/DocsLayout.astro";
 import CodeBlock from "../components/CodeBlock.astro";
+import Callout from "../components/Callout.astro";
 const dotExample = `let cfg = DotCfg::new("mytool");
 // ~/.mytool/config.toml
 
@@ -38,7 +39,9 @@ const ancestorFromExample = `let cfg = DotCfg::new("mytool")
     <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">Custom directory <span class="ml-[7px] inline-block rounded-full border border-accent-tint px-[7px] py-[3px] align-middle text-[11px] font-bold tracking-normal text-primary">Since 0.3.0</span></h2>
     <p><code>.at_dir()</code> bypasses both the dot and XDG strategies. The directory you provide is used exactly as the config directory; dotcfg only appends the configured filename and extension.</p>
     <CodeBlock label="Project-local config" code={customExample} />
-    <div class="my-6 rounded-r-lg border-l-[3px] border-primary bg-muted px-[18px] py-[15px] dark:bg-muted"><strong class="block">Exact means exact</strong><p class="mt-[3px] text-muted-foreground"><code>.at_dir("./settings")</code> does not add <code>mytool</code>, expand <code>~</code>, or expand environment variables. Relative paths remain relative to the process working directory.</p></div>
+    <Callout type="info" title="Exact means exact">
+      <p><code>.at_dir("./settings")</code> does not add <code>mytool</code>, expand <code>~</code>, or expand environment variables. Relative paths remain relative to the process working directory.</p>
+    </Callout>
 
     <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">Discover a project config <span class="ml-[7px] inline-block rounded-full border border-accent-tint px-[7px] py-[3px] align-middle text-[11px] font-bold tracking-normal text-primary">Since 0.3.0</span></h2>
     <p><code>find_in_ancestors()</code> was introduced in 0.3.0 for tools that can run from anywhere inside a project. It starts at the current working directory and walks upward. At each level it looks for <code>.mytool/config.toml</code> (or your selected filename and format).</p>
