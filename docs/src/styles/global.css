@@ -21,6 +21,14 @@
   --accent-tint: #d7bba8;
   --border-strong: #d3c9ba;
   --prose: #34332f;
+  --callout-info: #285f91;
+  --callout-info-bg: #eff5fa;
+  --callout-warning: #87590c;
+  --callout-warning-bg: #fff8e8;
+  --callout-success: #286543;
+  --callout-success-bg: #edf7f0;
+  --callout-error: #a33333;
+  --callout-error-bg: #fdf0ef;
 }
 
 :root[data-theme="dark"] {
@@ -41,7 +49,15 @@
   --code-bright: #d6d1c6;
   --accent-tint: #d7bba8;
   --border-strong: #d3c9ba;
-  --prose: #34332f;
+  --prose: #f3efe7;
+  --callout-info: #9ccbf0;
+  --callout-info-bg: #202f3a;
+  --callout-warning: #efc677;
+  --callout-warning-bg: #352e20;
+  --callout-success: #91d3a8;
+  --callout-success-bg: #203329;
+  --callout-error: #f0a0a0;
+  --callout-error-bg: #392525;
 }
 
 @theme inline {
@@ -63,6 +79,14 @@
   --color-accent-tint: var(--accent-tint);
   --color-border-strong: var(--border-strong);
   --color-prose: var(--prose);
+  --color-callout-info: var(--callout-info);
+  --color-callout-info-bg: var(--callout-info-bg);
+  --color-callout-warning: var(--callout-warning);
+  --color-callout-warning-bg: var(--callout-warning-bg);
+  --color-callout-success: var(--callout-success);
+  --color-callout-success-bg: var(--callout-success-bg);
+  --color-callout-error: var(--callout-error);
+  --color-callout-error-bg: var(--callout-error-bg);
   --font-sans: Arial, Helvetica, sans-serif;
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }

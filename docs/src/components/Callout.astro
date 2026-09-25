@@ -7,16 +7,16 @@ interface Props {
 const { type = "info", title } = Astro.props;
 const labels = { info: "Information", warning: "Warning", success: "Success", error: "Error" };
 const tones = {
-  info: "border-[#285f91]/25 bg-[#eff5fa] dark:border-[#9ccbf0]/25 dark:bg-[#202f3a]",
-  warning: "border-[#87590c]/25 bg-[#fff8e8] dark:border-[#efc677]/25 dark:bg-[#352e20]",
-  success: "border-[#286543]/25 bg-[#edf7f0] dark:border-[#91d3a8]/25 dark:bg-[#203329]",
-  error: "border-[#a33333]/25 bg-[#fdf0ef] dark:border-[#f0a0a0]/25 dark:bg-[#392525]",
+  info: "border-callout-info/25 bg-callout-info-bg",
+  warning: "border-callout-warning/25 bg-callout-warning-bg",
+  success: "border-callout-success/25 bg-callout-success-bg",
+  error: "border-callout-error/25 bg-callout-error-bg",
 };
 const accents = {
-  info: "text-[#285f91] dark:text-[#9ccbf0]",
-  warning: "text-[#87590c] dark:text-[#efc677]",
-  success: "text-[#286543] dark:text-[#91d3a8]",
-  error: "text-[#a33333] dark:text-[#f0a0a0]",
+  info: "text-callout-info",
+  warning: "text-callout-warning",
+  success: "text-callout-success",
+  error: "text-callout-error",
 };
 ---
 <aside class:list={["my-6 flex items-start gap-3 rounded-[9px] border px-[18px] py-4 text-sm", tones[type]]} aria-label={labels[type]}>
