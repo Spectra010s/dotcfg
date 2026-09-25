@@ -58,7 +58,8 @@ const groups = [
           const theme = preference === 'system' ? (systemTheme.matches ? 'dark' : 'light') : preference;
           document.documentElement.dataset.theme = theme;
           document.documentElement.style.colorScheme = theme;
-          document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#181817' : '#fbfaf7');
+          const bg = getComputedStyle(document.documentElement).getPropertyValue('--background').trim();
+          document.querySelector('meta[name="theme-color"]')?.setAttribute('content', bg || (theme === 'dark' ? '#181817' : '#fbfaf7'));
           document.querySelectorAll('[data-theme-select]').forEach((select) => { select.value = preference; });
           document.querySelectorAll('[data-theme-favicon]').forEach((icon) => {
             icon.href = '/brand/icon-' + theme + '.png';
@@ -78,6 +79,7 @@ const groups = [
     <title>{title}</title>
     <meta name="description" content={description} />
     <meta name="robots" content="index, follow" />
+    <meta name="google-site-verification" content="-oHieeYQu6xGSIhnHW1QfQGRRFUikmwUrWl_oYU2xQg" />
     <link rel="canonical" href={canonicalUrl} />
 
     <link rel="icon" type="image/png" href="/brand/icon-light.png" data-theme-favicon />
@@ -113,7 +115,7 @@ const groups = [
     <header class="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-border bg-background/95 px-7 backdrop-blur-[10px] max-[760px]:px-4">
       <a class="inline-flex items-center gap-2 text-[19px] font-bold tracking-[-0.02em] text-foreground" href="/"><img class="rounded-md dark:hidden" src="/brand/icon-light.png" alt="" width="30" height="30" /><img class="hidden rounded-md dark:block" src="/brand/icon-dark.png" alt="" width="30" height="30" /><span><span class="text-primary">dot</span>cfg</span></a>
       <div class="flex shrink-0 items-center justify-end gap-2">
-        <a class="inline-flex h-9 items-center gap-2 whitespace-nowrap rounded-lg border border-border bg-card px-3 text-[13px] font-bold leading-none transition-colors hover:border-[#d3c9ba] hover:bg-[#fdfcf9] dark:hover:border-muted-foreground dark:hover:bg-muted max-[760px]:h-[34px] max-[760px]:gap-1.5 max-[760px]:px-2 max-[760px]:text-xs" href="https://github.com/Spectra010s/dotcfg" aria-label={starCount ? `Star dotcfg on GitHub. ${starCount} stars.` : "Star dotcfg on GitHub"}>
+        <a class="inline-flex h-9 items-center gap-2 whitespace-nowrap rounded-lg border border-border bg-card px-3 text-[13px] font-bold leading-none transition-colors hover:border-border-strong hover:bg-primary-foreground dark:hover:bg-muted max-[760px]:h-[34px] max-[760px]:gap-1.5 max-[760px]:px-2 max-[760px]:text-xs" href="https://github.com/Spectra010s/dotcfg" aria-label={starCount ? `Star dotcfg on GitHub. ${starCount} stars.` : "Star dotcfg on GitHub"}>
           <span class="relative inline-flex items-center justify-center text-xl leading-none max-[760px]:text-[19px]" aria-hidden="true">☆{starCount && <span class="absolute -right-[11px] -top-2 flex h-[17px] min-w-[17px] items-center justify-center rounded-full border-2 border-background bg-primary px-1 text-[9px] font-extrabold leading-none text-white">{starCount}</span>}</span>
           <span>Star<span class="max-[760px]:hidden"> on GitHub</span></span>
         </a>
