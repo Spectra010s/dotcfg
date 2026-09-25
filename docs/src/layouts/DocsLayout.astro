@@ -126,33 +126,22 @@ const groups = [
     </header>
 
     <div class="invisible fixed inset-0 z-40 bg-foreground/30 opacity-0 transition-all max-[760px]:block max-[760px]:[&.open]:visible max-[760px]:[&.open]:opacity-100" data-nav-backdrop></div>
-    <aside class="fixed inset-y-0 left-0 z-50 hidden w-[min(84vw,320px)] -translate-x-[102%] flex-col bg-background shadow-[18px_0_50px_rgba(32,32,29,0.12)] transition-transform duration-200 max-[760px]:flex max-[760px]:[&.open]:translate-x-0" id="mobile-nav" aria-label="Documentation navigation" data-mobile-nav>
-      <div class="flex h-16 items-center justify-between border-b border-border px-[18px]">
+
+    <div class="mx-auto grid max-w-[1600px] grid-cols-[220px_minmax(0,1fr)_180px] gap-[42px] px-7 pb-16 pt-[42px] max-[1200px]:grid-cols-[220px_minmax(0,1fr)] max-[900px]:grid-cols-[210px_minmax(0,1fr)] max-[900px]:gap-7 max-[760px]:block max-[760px]:px-5 max-[760px]:pb-11 max-[760px]:pt-[30px]">
+      <aside class="sticky top-[94px] max-h-[calc(100vh-122px)] overflow-y-auto max-[760px]:fixed max-[760px]:inset-y-0 max-[760px]:left-0 max-[760px]:z-50 max-[760px]:flex max-[760px]:max-h-none max-[760px]:w-[min(84vw,320px)] max-[760px]:-translate-x-[102%] max-[760px]:flex-col max-[760px]:overflow-visible max-[760px]:bg-background max-[760px]:shadow-[18px_0_50px_rgba(32,32,29,0.12)] max-[760px]:transition-transform max-[760px]:duration-200 max-[760px]:[&.open]:translate-x-0" id="mobile-nav" aria-label="Documentation navigation" data-mobile-nav>
+      <div class="hidden h-16 items-center justify-between border-b border-border px-[18px] max-[760px]:flex">
         <a class="inline-flex items-center gap-2 text-[19px] font-bold tracking-[-0.02em] text-foreground" href="/"><img class="rounded-md dark:hidden" src="/brand/icon-light.png" alt="" width="30" height="30" /><img class="hidden rounded-md dark:block" src="/brand/icon-dark.png" alt="" width="30" height="30" /><span><span class="text-primary">dot</span>cfg</span></a>
         <button class="cursor-pointer border-0 bg-transparent px-2 py-[5px] text-[28px] leading-none text-muted-foreground" type="button" aria-label="Close documentation navigation" data-menu-close>×</button>
       </div>
-      <div class="min-h-0 flex-1 overflow-y-auto px-[18px] pb-8 pt-6">
-        {groups.map((group) => (
-          <section class="mb-7 block">
-            <p class="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">{group.label}</p>
-            <nav class="grid gap-[3px]">{group.links.map(([label, href]) => <a class:list={["rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground max-[760px]:px-2.5 max-[760px]:py-[9px] max-[760px]:text-[15px]", { "bg-muted font-bold text-foreground": currentPath === href || (href === "/blog" && currentPath.startsWith("/blog/")) }]} href={href}>{label}</a>)}</nav>
-          </section>
-        ))}
-      </div>
-      <div class="shrink-0 border-t border-border bg-background px-[18px] pb-4 pt-4"><ThemeToggle /><p class="mb-2 mt-4 text-[13px] font-bold leading-[1.45] text-foreground">A small crate.<br />A little less config code.</p><span class="text-[11px] tracking-[0.02em] text-muted-foreground">MIT / Apache-2.0</span></div>
-    </aside>
-
-    <div class="mx-auto grid max-w-[1600px] grid-cols-[220px_minmax(0,1fr)_180px] gap-[42px] px-7 pb-16 pt-[42px] max-[1200px]:grid-cols-[220px_minmax(0,1fr)] max-[900px]:grid-cols-[210px_minmax(0,1fr)] max-[900px]:gap-7 max-[760px]:block max-[760px]:px-5 max-[760px]:pb-11 max-[760px]:pt-[30px]">
-      <aside class="sticky top-[94px] max-h-[calc(100vh-122px)] overflow-y-auto max-[760px]:hidden">
-        <div class="grid gap-[26px] pb-5">
+        <div class="grid min-h-0 gap-[26px] overflow-y-auto pb-5 max-[760px]:flex-1 max-[760px]:flex-col max-[760px]:gap-0 max-[760px]:px-[18px] max-[760px]:pb-8 max-[760px]:pt-6">
           {groups.map((group) => (
-            <section class="block">
+            <section class="block max-[760px]:mb-7">
               <p class="mb-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">{group.label}</p>
-              <nav class="grid gap-[3px]">{group.links.map(([label, href]) => <a class:list={["rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground", { "bg-muted font-bold text-foreground": currentPath === href || (href === "/blog" && currentPath.startsWith("/blog/")) }]} href={href}>{label}</a>)}</nav>
+              <nav class="grid gap-[3px]">{group.links.map(([label, href]) => <a class:list={["rounded-md px-2 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground max-[760px]:px-2.5 max-[760px]:py-[9px] max-[760px]:text-[15px]", { "bg-muted font-bold text-foreground": currentPath === href || (href === "/blog" && currentPath.startsWith("/blog/")) }]} href={href}>{label}</a>)}</nav>
             </section>
           ))}
         </div>
-        <div class="sticky bottom-0 mt-5 border-t border-border bg-background px-2 pb-4 pt-5 text-muted-foreground">
+        <div class="sticky bottom-0 mt-5 shrink-0 border-t border-border bg-background px-2 pb-4 pt-5 text-muted-foreground max-[760px]:mt-0 max-[760px]:px-[18px] max-[760px]:pt-4">
           <ThemeToggle />
           <p class="mb-2 text-[13px] font-bold leading-[1.45] text-foreground">A small crate.<br />A little less config code.</p>
           <span class="text-[11px] tracking-[0.02em]">MIT / Apache-2.0</span>
