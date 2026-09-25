@@ -76,7 +76,7 @@ pub enum Format {
 
 Cargo features decide which formats are available in the binary, while each configuration instance decides which enabled format it actually uses.
 
-With dotcfg 0.3.0, an application that needs all three can enable JSON and YAML alongside the default TOML support:
+With dotcfg `0.3.0`, an application that needs all three can enable JSON and YAML alongside the default TOML support:
 
 ```toml
 [dependencies]
@@ -120,7 +120,7 @@ let local = DotCfg::new("mytool");
 let xdg = DotCfg::new("mytool").xdg();
 ```
 
-And in 0.3.0, a handle can point directly at a custom directory:
+And in `0.3.0`, a handle can point directly at a custom directory:
 
 ```rust
 let project = DotCfg::new("mytool")

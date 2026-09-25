@@ -1,7 +1,7 @@
 ---
 title: "Why I Built dotcfg: A Flexible Config Manager for Rust Apps"
 description: "The configuration problems that pushed me to build dotcfg, from non-destructive loading to key-level access and flexible directory strategies."
-publishedAt: 2026-09-17
+publishedAt: 2026-09-20
 tags:
   - rust
   - configuration
@@ -91,7 +91,7 @@ You can also choose a different filename:
 let cfg = DotCfg::new("mytool").filename("settings");
 ```
 
-With dotcfg 0.3.0, you can point configuration at an exact directory when neither of those strategies fits:
+With dotcfg `0.3.0`, you can point configuration at an exact directory when neither of those strategies fits:
 
 ```rust
 let cfg = DotCfg::new("mytool")
@@ -140,4 +140,4 @@ I built dotcfg around that idea: configuration APIs should give you useful defau
 
 You can load a whole struct or work with one key. You can use a traditional dot-directory, XDG, an exact directory, or project config discovery. And you can enable the formats your application actually needs — TOML, JSON, YAML, or more than one of them.
 
-If that sounds useful for something you're building, check out **dotcfg on GitHub** or the rest of the documentation.
+If that sounds useful for something you're building, check out [dotcfg on GitHub](https://github.com/Spectra010s/dotcfg) or [the rest of the documentation](/).
