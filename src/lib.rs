@@ -53,6 +53,7 @@
 
 mod env;
 pub mod error;
+mod value;
 
 use std::{
     fs,
@@ -61,6 +62,7 @@ use std::{
 
 pub use error::Error;
 use serde::{Deserialize, Serialize};
+use value::Value;
 
 #[cfg(not(any(feature = "toml", feature = "json", feature = "yaml")))]
 compile_error!(
@@ -367,14 +369,12 @@ impl DotCfg {
         Ok(())
     }
 
-    /// Load the config file.
+    /// Read the config file into the common value tree.
     ///
-    /// Returns `None` if the file doesn't exist — no auto-create.
-    /// Use [`Self::load_or_default`] if you want auto-create behavior.
-    pub fn load<T>(&self) -> Result<Option<T>, Error>
-    where
-        T: for<'de> Deserialize<'de>,
-    {
+    /// `Ok(None)` when the file doesn't exist. An existing file with no values
+    /// (zero bytes, whitespace, an empty document) is an empty tree; a malformed
+    /// one is an error.
+    fn read_tree(&self) -> Result<Option<Value>, Error> {
         let path = self.file_path()?;
 
         if !path.exists() {
@@ -382,17 +382,41 @@ impl DotCfg {
         }
 
         let content = fs::read_to_string(&path)?;
+        value::parse(&self.format, &content).map(Some)
+    }
 
-        let config = match self.format {
-            #[cfg(feature = "toml")]
-            Format::Toml => toml::from_str(&content)?,
-            #[cfg(feature = "json")]
-            Format::Json => serde_json::from_str(&content)?,
-            #[cfg(feature = "yaml")]
-            Format::Yaml => serde_yaml_ng::from_str(&content)?,
-        };
+    /// Like [`Self::read_tree`], but a missing file is an empty tree — the
+    /// starting point for mutations.
+    fn read_tree_or_empty(&self) -> Result<Value, Error> {
+        Ok(self.read_tree()?.unwrap_or_else(value::empty))
+    }
 
-        Ok(Some(config))
+    /// Serialize `tree` in the selected format and write it, creating the
+    /// config directory if needed.
+    fn write_tree(&self, tree: &Value) -> Result<(), Error> {
+        let content = value::render(&self.format, tree)?;
+        self.ensure_dir()?;
+        fs::write(self.file_path()?, content)?;
+        Ok(())
+    }
+
+    /// Load the config file.
+    ///
+    /// Returns `None` if the file doesn't exist — no auto-create.
+    /// Use [`Self::load_or_default`] if you want auto-create behavior.
+    ///
+    /// A file that exists but holds no values (empty, whitespace only, or an
+    /// empty document) is deserialized as an empty config, so it succeeds only
+    /// if `T` can be built from no fields (e.g. all fields are `Option` or
+    /// `#[serde(default)]`). A malformed file is an error.
+    pub fn load<T>(&self) -> Result<Option<T>, Error>
+    where
+        T: for<'de> Deserialize<'de>,
+    {
+        match self.read_tree()? {
+            Some(tree) => value::from_value(tree).map(Some),
+            None => Ok(None),
+        }
     }
 
     /// Load the config or return an error if it doesn't exist.
@@ -454,31 +478,8 @@ impl DotCfg {
             return Ok(raw);
         }
 
-        let path = self.file_path()?;
-
-        if !path.exists() {
-            return Err(Error::NotFound);
-        }
-
-        let content = fs::read_to_string(&path)?;
-
-        match self.format {
-            #[cfg(feature = "toml")]
-            Format::Toml => {
-                let value: toml::Value = toml::from_str(&content)?;
-                get_toml_value(&value, key)
-            }
-            #[cfg(feature = "json")]
-            Format::Json => {
-                let value: serde_json::Value = serde_json::from_str(&content)?;
-                get_json_value(&value, key)
-            }
-            #[cfg(feature = "yaml")]
-            Format::Yaml => {
-                let value: serde_yaml_ng::Value = serde_yaml_ng::from_str(&content)?;
-                get_yaml_value(&value, key)
-            }
-        }
+        let tree = self.read_tree()?.ok_or(Error::NotFound)?;
+        value::get_node(&tree, key).map(|node| value::display(&self.format, node))
     }
 
     /// Set a single config value by key.
@@ -488,59 +489,22 @@ impl DotCfg {
     /// Creates the config file and directory if they don't exist.
     /// If the file exists, only the specified key is updated — everything else is preserved.
     pub fn set(&self, key: &str, value: &str) -> Result<(), Error> {
-        let path = self.file_path()?;
+        self.set_node(key, Value::String(value.to_string()))
+    }
 
-        match self.format {
-            #[cfg(feature = "toml")]
-            Format::Toml => {
-                let mut table: toml::Value = if path.exists() {
-                    let content = fs::read_to_string(&path)?;
-                    toml::from_str(&content)?
-                } else {
-                    toml::Value::Table(toml::map::Map::new())
-                };
-
-                set_toml_value(&mut table, key, value)?;
-                self.ensure_dir()?;
-                fs::write(&path, toml::to_string_pretty(&table)?)?;
-            }
-            #[cfg(feature = "json")]
-            Format::Json => {
-                let mut json: serde_json::Value = if path.exists() {
-                    let content = fs::read_to_string(&path)?;
-                    serde_json::from_str(&content)?
-                } else {
-                    serde_json::Value::Object(serde_json::Map::new())
-                };
-
-                set_json_value(&mut json, key, value)?;
-                self.ensure_dir()?;
-                fs::write(&path, serde_json::to_string_pretty(&json)?)?;
-            }
-            #[cfg(feature = "yaml")]
-            Format::Yaml => {
-                let mut yaml: serde_yaml_ng::Value = if path.exists() {
-                    let content = fs::read_to_string(&path)?;
-                    serde_yaml_ng::from_str(&content)?
-                } else {
-                    serde_yaml_ng::Value::Mapping(serde_yaml_ng::Mapping::new())
-                };
-
-                set_yaml_value(&mut yaml, key, value)?;
-                self.ensure_dir()?;
-                fs::write(&path, serde_yaml_ng::to_string(&yaml)?)?;
-            }
-        }
-
-        Ok(())
+    /// Splice `new_val` into the tree at `key` and write it back.
+    fn set_node(&self, key: &str, new_val: Value) -> Result<(), Error> {
+        let mut tree = self.read_tree_or_empty()?;
+        value::set_node(&mut tree, key, new_val)?;
+        self.write_tree(&tree)
     }
 
     /// Get a single config value by key, deserialized into `T`.
     ///
     /// Like [`Self::get`], but returns a typed value instead of a `String`.
-    /// The value node is handed straight to serde in the config format's own
-    /// representation — no stringify/re-parse round trip — so arrays, numbers
-    /// and booleans deserialize cleanly.
+    /// The value node is handed straight to serde from the internal value
+    /// tree — no stringify/re-parse round trip — so arrays, numbers and
+    /// booleans deserialize cleanly.
     ///
     /// Supports flat keys (`"port"`) and nested keys (`"features.auto_update"`).
     ///
@@ -570,46 +534,21 @@ impl DotCfg {
     /// - [`Error::KeyNotFound`] if the key isn't present
     /// - [`Error::EnvParse`] if an env override isn't readable as a `T`
     ///   (a bad override is never silently ignored in favor of the file)
-    /// - the format's own (de)serialization error if the file value isn't a `T`
+    /// - [`Error::Deserialize`] if the file value isn't a `T`
+    /// - the format's parse error if the file is malformed
     pub fn get_as<T: serde::de::DeserializeOwned>(&self, key: &str) -> Result<T, Error> {
         if let Some((var, raw)) = self.env_override(key)? {
             return env::from_env_str(&var, &raw);
         }
 
-        let path = self.file_path()?;
-
-        if !path.exists() {
-            return Err(Error::NotFound);
-        }
-
-        let content = fs::read_to_string(&path)?;
-
-        match self.format {
-            #[cfg(feature = "toml")]
-            Format::Toml => {
-                let value: toml::Value = toml::from_str(&content)?;
-                Ok(get_toml_node(&value, key)?.clone().try_into()?)
-            }
-            #[cfg(feature = "json")]
-            Format::Json => {
-                let value: serde_json::Value = serde_json::from_str(&content)?;
-                Ok(serde_json::from_value(get_json_node(&value, key)?.clone())?)
-            }
-            #[cfg(feature = "yaml")]
-            Format::Yaml => {
-                let value: serde_yaml_ng::Value = serde_yaml_ng::from_str(&content)?;
-                Ok(serde_yaml_ng::from_value(
-                    get_yaml_node(&value, key)?.clone(),
-                )?)
-            }
-        }
+        let tree = self.read_tree()?.ok_or(Error::NotFound)?;
+        value::from_value(value::get_node(&tree, key)?.clone())
     }
 
     /// Set a single config value by key from any [`Serialize`] type.
     ///
     /// Like [`Self::set`], but writes a typed value instead of a string:
-    /// `value` is serialized into the config format's own value representation
-    /// and spliced into the tree, so `42u16` lands as a number and
+    /// `value` is serialized into the internal value tree and spliced in, so `42u16` lands as a number and
     /// `vec!["a", "b"]` as an array.
     ///
     /// Supports flat keys (`"port"`) and nested keys (`"features.auto_update"`),
@@ -627,57 +566,7 @@ impl DotCfg {
     /// # }
     /// ```
     pub fn set_val<T: Serialize>(&self, key: &str, value: T) -> Result<(), Error> {
-        let path = self.file_path()?;
-
-        match self.format {
-            #[cfg(feature = "toml")]
-            Format::Toml => {
-                let new_val = toml::Value::try_from(value)?;
-
-                let mut table: toml::Value = if path.exists() {
-                    let content = fs::read_to_string(&path)?;
-                    toml::from_str(&content)?
-                } else {
-                    toml::Value::Table(toml::map::Map::new())
-                };
-
-                set_toml_node(&mut table, key, new_val)?;
-                self.ensure_dir()?;
-                fs::write(&path, toml::to_string_pretty(&table)?)?;
-            }
-            #[cfg(feature = "json")]
-            Format::Json => {
-                let new_val = serde_json::to_value(value)?;
-
-                let mut json: serde_json::Value = if path.exists() {
-                    let content = fs::read_to_string(&path)?;
-                    serde_json::from_str(&content)?
-                } else {
-                    serde_json::Value::Object(serde_json::Map::new())
-                };
-
-                set_json_node(&mut json, key, new_val)?;
-                self.ensure_dir()?;
-                fs::write(&path, serde_json::to_string_pretty(&json)?)?;
-            }
-            #[cfg(feature = "yaml")]
-            Format::Yaml => {
-                let new_val = serde_yaml_ng::to_value(value)?;
-
-                let mut yaml: serde_yaml_ng::Value = if path.exists() {
-                    let content = fs::read_to_string(&path)?;
-                    serde_yaml_ng::from_str(&content)?
-                } else {
-                    serde_yaml_ng::Value::Mapping(serde_yaml_ng::Mapping::new())
-                };
-
-                set_yaml_node(&mut yaml, key, new_val)?;
-                self.ensure_dir()?;
-                fs::write(&path, serde_yaml_ng::to_string(&yaml)?)?;
-            }
-        }
-
-        Ok(())
+        self.set_node(key, value::to_value(value)?)
     }
 
     /// Delete the config file. The directory is kept.
@@ -696,237 +585,6 @@ impl DotCfg {
             fs::remove_dir_all(dir)?;
         }
         Ok(())
-    }
-}
-
-// TOML helpers
-
-/// Look up the raw value node at `key`. Shared path logic behind
-/// [`DotCfg::get`] (which stringifies the node) and [`DotCfg::get_as`]
-/// (which deserializes it).
-#[cfg(feature = "toml")]
-fn get_toml_node<'a>(value: &'a toml::Value, key: &str) -> Result<&'a toml::Value, Error> {
-    let parts: Vec<&str> = key.splitn(2, '.').collect();
-
-    match parts.as_slice() {
-        [field] => value.get(field),
-
-        [section, field] => value.get(section).and_then(|s| s.get(field)),
-
-        _ => return Err(Error::InvalidKey(key.to_string())),
-    }
-    .ok_or_else(|| Error::KeyNotFound(key.to_string()))
-}
-
-#[cfg(feature = "toml")]
-fn get_toml_value(value: &toml::Value, key: &str) -> Result<String, Error> {
-    get_toml_node(value, key).map(toml_val_to_string)
-}
-
-/// Write a raw value node at `key`, creating the intermediate table for a
-/// `section.field` key. Shared by [`DotCfg::set`] and [`DotCfg::set_val`].
-#[cfg(feature = "toml")]
-fn set_toml_node(value: &mut toml::Value, key: &str, new_val: toml::Value) -> Result<(), Error> {
-    let parts: Vec<&str> = key.splitn(2, '.').collect();
-    let table = value
-        .as_table_mut()
-        .ok_or_else(|| Error::NotATable("root".to_string()))?;
-
-    match parts.as_slice() {
-        [field] => {
-            table.insert(field.to_string(), new_val);
-        }
-        [section, field] => {
-            let section_val = table
-                .entry(section.to_string())
-                .or_insert_with(|| toml::Value::Table(toml::map::Map::new()));
-
-            let section_table = section_val
-                .as_table_mut()
-                .ok_or_else(|| Error::NotATable(section.to_string()))?;
-
-            section_table.insert(field.to_string(), new_val);
-        }
-        _ => return Err(Error::InvalidKey(key.to_string())),
-    }
-
-    Ok(())
-}
-
-#[cfg(feature = "toml")]
-fn set_toml_value(value: &mut toml::Value, key: &str, new_val: &str) -> Result<(), Error> {
-    set_toml_node(value, key, toml::Value::String(new_val.to_string()))
-}
-
-#[cfg(feature = "toml")]
-fn toml_val_to_string(value: &toml::Value) -> String {
-    match value {
-        toml::Value::String(s) => s.clone(),
-        toml::Value::Integer(i) => i.to_string(),
-        toml::Value::Float(f) => f.to_string(),
-        toml::Value::Boolean(b) => b.to_string(),
-        toml::Value::Datetime(d) => d.to_string(),
-        toml::Value::Array(a) => {
-            toml::to_string(&toml::Value::Array(a.clone())).unwrap_or_default()
-        }
-        toml::Value::Table(t) => toml::to_string(t).unwrap_or_default(),
-    }
-}
-
-// JSON helpers
-/// JSON counterpart of [`get_toml_node`].
-#[cfg(feature = "json")]
-fn get_json_node<'a>(
-    value: &'a serde_json::Value,
-    key: &str,
-) -> Result<&'a serde_json::Value, Error> {
-    let parts: Vec<&str> = key.splitn(2, '.').collect();
-
-    match parts.as_slice() {
-        [field] => value.get(field),
-
-        [section, field] => value.get(section).and_then(|s| s.get(field)),
-
-        _ => return Err(Error::InvalidKey(key.to_string())),
-    }
-    .ok_or_else(|| Error::KeyNotFound(key.to_string()))
-}
-
-#[cfg(feature = "json")]
-fn get_json_value(value: &serde_json::Value, key: &str) -> Result<String, Error> {
-    get_json_node(value, key).map(json_val_to_string)
-}
-
-/// JSON counterpart of [`set_toml_node`].
-#[cfg(feature = "json")]
-fn set_json_node(
-    value: &mut serde_json::Value,
-    key: &str,
-    new_val: serde_json::Value,
-) -> Result<(), Error> {
-    let parts: Vec<&str> = key.splitn(2, '.').collect();
-    let obj = value
-        .as_object_mut()
-        .ok_or_else(|| Error::NotATable("root".to_string()))?;
-
-    match parts.as_slice() {
-        [field] => {
-            obj.insert(field.to_string(), new_val);
-        }
-        [section, field] => {
-            let section_val = obj
-                .entry(section.to_string())
-                .or_insert_with(|| serde_json::Value::Object(serde_json::Map::new()));
-
-            let section_obj = section_val
-                .as_object_mut()
-                .ok_or_else(|| Error::NotATable(section.to_string()))?;
-
-            section_obj.insert(field.to_string(), new_val);
-        }
-        _ => return Err(Error::InvalidKey(key.to_string())),
-    }
-
-    Ok(())
-}
-
-#[cfg(feature = "json")]
-fn set_json_value(value: &mut serde_json::Value, key: &str, new_val: &str) -> Result<(), Error> {
-    set_json_node(value, key, serde_json::Value::String(new_val.to_string()))
-}
-
-#[cfg(feature = "json")]
-fn json_val_to_string(value: &serde_json::Value) -> String {
-    match value {
-        serde_json::Value::String(s) => s.clone(),
-        serde_json::Value::Number(n) => n.to_string(),
-        serde_json::Value::Bool(b) => b.to_string(),
-        serde_json::Value::Null => "null".to_string(),
-        serde_json::Value::Array(_) | serde_json::Value::Object(_) => {
-            serde_json::to_string(value).unwrap_or_default()
-        }
-    }
-}
-
-// YAML helpers
-/// YAML counterpart of [`get_toml_node`].
-#[cfg(feature = "yaml")]
-fn get_yaml_node<'a>(
-    value: &'a serde_yaml_ng::Value,
-    key: &str,
-) -> Result<&'a serde_yaml_ng::Value, Error> {
-    let parts: Vec<&str> = key.splitn(2, '.').collect();
-
-    match parts.as_slice() {
-        [field] => value.get(field),
-
-        [section, field] => value.get(section).and_then(|s| s.get(field)),
-
-        _ => return Err(Error::InvalidKey(key.to_string())),
-    }
-    .ok_or_else(|| Error::KeyNotFound(key.to_string()))
-}
-
-#[cfg(feature = "yaml")]
-fn get_yaml_value(value: &serde_yaml_ng::Value, key: &str) -> Result<String, Error> {
-    get_yaml_node(value, key).map(yaml_val_to_string)
-}
-
-/// YAML counterpart of [`set_toml_node`].
-#[cfg(feature = "yaml")]
-fn set_yaml_node(
-    value: &mut serde_yaml_ng::Value,
-    key: &str,
-    new_val: serde_yaml_ng::Value,
-) -> Result<(), Error> {
-    let parts: Vec<&str> = key.splitn(2, '.').collect();
-    let map = value
-        .as_mapping_mut()
-        .ok_or_else(|| Error::NotATable("root".to_string()))?;
-
-    match parts.as_slice() {
-        [field] => {
-            map.insert(serde_yaml_ng::Value::String(field.to_string()), new_val);
-        }
-        [section, field] => {
-            let section_val = map
-                .entry(serde_yaml_ng::Value::String(section.to_string()))
-                .or_insert_with(|| serde_yaml_ng::Value::Mapping(serde_yaml_ng::Mapping::new()));
-
-            let section_map = section_val
-                .as_mapping_mut()
-                .ok_or_else(|| Error::NotATable(section.to_string()))?;
-
-            section_map.insert(serde_yaml_ng::Value::String(field.to_string()), new_val);
-        }
-        _ => return Err(Error::InvalidKey(key.to_string())),
-    }
-
-    Ok(())
-}
-
-#[cfg(feature = "yaml")]
-fn set_yaml_value(value: &mut serde_yaml_ng::Value, key: &str, new_val: &str) -> Result<(), Error> {
-    set_yaml_node(
-        value,
-        key,
-        serde_yaml_ng::Value::String(new_val.to_string()),
-    )
-}
-
-#[cfg(feature = "yaml")]
-fn yaml_val_to_string(value: &serde_yaml_ng::Value) -> String {
-    match value {
-        serde_yaml_ng::Value::String(s) => s.clone(),
-        serde_yaml_ng::Value::Number(n) => n.to_string(),
-        serde_yaml_ng::Value::Bool(b) => b.to_string(),
-        serde_yaml_ng::Value::Null => "null".to_string(),
-        // Sequences, mappings and tagged values are re-emitted as YAML;
-        // `to_string` appends a trailing newline we don't want in a `get()` result.
-        _ => serde_yaml_ng::to_string(value)
-            .unwrap_or_default()
-            .trim_end()
-            .to_string(),
     }
 }
 
@@ -1038,165 +696,5 @@ mod unit_tests {
             cfg.get_as::<u16>("bad").unwrap_err(),
             Error::EnvParse(_, _)
         ));
-    }
-
-    #[cfg(feature = "toml")]
-    #[test]
-    fn toml_val_to_string_variants() {
-        // `get()` returns String for all types, so non-strings are stringified
-        assert_eq!(toml_val_to_string(&toml::Value::String("hi".into())), "hi");
-        assert_eq!(toml_val_to_string(&toml::Value::Integer(42)), "42");
-        assert_eq!(toml_val_to_string(&toml::Value::Boolean(true)), "true");
-    }
-
-    #[cfg(feature = "toml")]
-    #[test]
-    fn get_set_toml_helper() {
-        // Helpers are tested in-memory to avoid creating temp files
-        // and to keep tests fast and isolated from the filesystem.
-        let mut val = toml::Value::Table(toml::map::Map::new());
-        set_toml_value(&mut val, "username", "tayo").unwrap();
-        assert_eq!(get_toml_value(&val, "username").unwrap(), "tayo");
-        set_toml_value(&mut val, "user.username", "jane").unwrap();
-        assert_eq!(get_toml_value(&val, "user.username").unwrap(), "jane");
-        assert!(get_toml_value(&val, "missing").is_err());
-    }
-
-    #[cfg(feature = "toml")]
-    #[test]
-    fn toml_node_helpers_roundtrip_typed_values() {
-        // `set_toml_node`/`get_toml_node` keep the native value type, which is
-        // what lets `set_val`/`get_as` avoid a string round trip.
-        let mut val = toml::Value::Table(toml::map::Map::new());
-
-        set_toml_node(&mut val, "port", toml::Value::Integer(8080)).unwrap();
-        set_toml_node(&mut val, "features.auto_update", toml::Value::Boolean(true)).unwrap();
-
-        let port: u16 = get_toml_node(&val, "port")
-            .unwrap()
-            .clone()
-            .try_into()
-            .unwrap();
-        assert_eq!(port, 8080);
-        assert!(
-            get_toml_node(&val, "features.auto_update")
-                .unwrap()
-                .as_bool()
-                .unwrap()
-        );
-
-        // stringifying still works on the same nodes — `get()` is unchanged
-        assert_eq!(get_toml_value(&val, "port").unwrap(), "8080");
-        assert!(get_toml_node(&val, "missing").is_err());
-    }
-
-    #[cfg(feature = "json")]
-    #[test]
-    fn json_val_to_string_variants() {
-        assert_eq!(
-            json_val_to_string(&serde_json::Value::String("hi".into())),
-            "hi"
-        );
-        assert_eq!(
-            json_val_to_string(&serde_json::Value::Number(42.into())),
-            "42"
-        );
-        assert_eq!(json_val_to_string(&serde_json::Value::Bool(false)), "false");
-    }
-
-    #[cfg(feature = "json")]
-    #[test]
-    fn get_set_json_helper() {
-        let mut val = serde_json::Value::Object(serde_json::Map::new());
-        set_json_value(&mut val, "username", "tayo").unwrap();
-        assert_eq!(get_json_value(&val, "username").unwrap(), "tayo");
-        set_json_value(&mut val, "user.username", "jane").unwrap();
-        assert_eq!(get_json_value(&val, "user.username").unwrap(), "jane");
-    }
-
-    #[cfg(feature = "json")]
-    #[test]
-    fn json_node_helpers_roundtrip_typed_values() {
-        let mut val = serde_json::Value::Object(serde_json::Map::new());
-
-        set_json_node(&mut val, "weights", serde_json::json!([1, 2, 3])).unwrap();
-        set_json_node(
-            &mut val,
-            "features.auto_update",
-            serde_json::Value::Bool(true),
-        )
-        .unwrap();
-
-        let weights: Vec<i32> =
-            serde_json::from_value(get_json_node(&val, "weights").unwrap().clone()).unwrap();
-        assert_eq!(weights, vec![1, 2, 3]);
-        assert!(
-            get_json_node(&val, "features.auto_update")
-                .unwrap()
-                .as_bool()
-                .unwrap()
-        );
-        assert!(get_json_node(&val, "missing").is_err());
-    }
-
-    #[cfg(feature = "yaml")]
-    #[test]
-    fn yaml_val_to_string_variants() {
-        assert_eq!(
-            yaml_val_to_string(&serde_yaml_ng::Value::String("hi".into())),
-            "hi"
-        );
-        assert_eq!(
-            yaml_val_to_string(&serde_yaml_ng::Value::Number(42.into())),
-            "42"
-        );
-        assert_eq!(
-            yaml_val_to_string(&serde_yaml_ng::Value::Bool(false)),
-            "false"
-        );
-        assert_eq!(yaml_val_to_string(&serde_yaml_ng::Value::Null), "null");
-    }
-
-    #[cfg(feature = "yaml")]
-    #[test]
-    fn get_set_yaml_helper() {
-        let mut val = serde_yaml_ng::Value::Mapping(serde_yaml_ng::Mapping::new());
-        set_yaml_value(&mut val, "username", "tayo").unwrap();
-        assert_eq!(get_yaml_value(&val, "username").unwrap(), "tayo");
-        set_yaml_value(&mut val, "user.username", "jane").unwrap();
-        assert_eq!(get_yaml_value(&val, "user.username").unwrap(), "jane");
-        assert!(get_yaml_value(&val, "missing").is_err());
-    }
-    #[cfg(feature = "yaml")]
-    #[test]
-    fn yaml_node_helpers_roundtrip_typed_values() {
-        let mut val = serde_yaml_ng::Value::Mapping(serde_yaml_ng::Mapping::new());
-
-        set_yaml_node(
-            &mut val,
-            "plugins",
-            serde_yaml_ng::Value::Sequence(vec![
-                serde_yaml_ng::Value::String("fmt".into()),
-                serde_yaml_ng::Value::String("lint".into()),
-            ]),
-        )
-        .unwrap();
-        set_yaml_node(
-            &mut val,
-            "features.auto_update",
-            serde_yaml_ng::Value::Bool(true),
-        )
-        .unwrap();
-
-        let plugins: Vec<String> =
-            serde_yaml_ng::from_value(get_yaml_node(&val, "plugins").unwrap().clone()).unwrap();
-        assert_eq!(plugins, vec!["fmt", "lint"]);
-        assert!(
-            get_yaml_node(&val, "features.auto_update")
-                .unwrap()
-                .as_bool()
-                .unwrap()
-        );
-        assert!(get_yaml_node(&val, "missing").is_err());
     }
 }

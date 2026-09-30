@@ -31,6 +31,15 @@ pub enum Error {
     #[error("Env var '{0}' is not valid unicode")]
     EnvNotUnicode(String),
 
+    /// A value could not be converted into the requested type, or a typed value
+    /// could not be represented as configuration.
+    #[error("Deserialize error: {0}")]
+    Deserialize(String),
+
+    /// A typed value could not be represented as configuration.
+    #[error("Serialize error: {0}")]
+    Serialize(String),
+
     /// Underlying IO error (read/write/create dir).
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
