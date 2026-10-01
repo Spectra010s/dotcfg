@@ -27,17 +27,16 @@ use serde::de::{
     value::StrDeserializer,
 };
 
-use crate::error::DotCfgError;
+use crate::error::Error;
 
 /// Deserialize the raw value of env var `var` into `T`.
 ///
 /// `var` is only carried through for the error message.
-pub(crate) fn from_env_str<T>(var: &str, raw: &str) -> Result<T, DotCfgError>
+pub(crate) fn from_env_str<T>(var: &str, raw: &str) -> Result<T, Error>
 where
     T: serde::de::DeserializeOwned,
 {
-    T::deserialize(EnvStr { raw })
-        .map_err(|err| DotCfgError::EnvParse(var.to_string(), err.to_string()))
+    T::deserialize(EnvStr { raw }).map_err(|err| Error::EnvParse(var.to_string(), err.to_string()))
 }
 
 /// Error raised while interpreting a raw env value.

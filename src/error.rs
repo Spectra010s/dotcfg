@@ -1,10 +1,8 @@
 //! Error types for `dotcfg`.
 
-use thiserror::Error;
-
 /// Errors returned by [`DotCfg`](crate::DotCfg) operations.
-#[derive(Error, Debug)]
-pub enum DotCfgError {
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
     /// Could not find home directory (`$HOME` not set or resolvable).
     #[error("Could not find home directory")]
     NoHomeDir,
@@ -57,3 +55,7 @@ pub enum DotCfgError {
     #[error("YAML error: {0}")]
     Yaml(#[from] serde_yaml_ng::Error),
 }
+
+/// Former name of [`Error`].
+#[deprecated(since = "0.4.0", note = "renamed to `dotcfg::Error`")]
+pub type DotCfgError = Error;

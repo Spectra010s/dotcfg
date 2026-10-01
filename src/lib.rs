@@ -59,7 +59,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use error::DotCfgError;
+pub use error::Error;
 use serde::{Deserialize, Serialize};
 
 #[cfg(not(any(feature = "toml", feature = "json", feature = "yaml")))]
@@ -187,8 +187,8 @@ impl DotCfg {
     ///     None => { let _ = DotCfg::new("mytool").xdg(); }
     /// }
     /// ```
-    pub fn find_in_ancestors(self) -> Result<Option<Self>, DotCfgError> {
-        let cwd = std::env::current_dir().map_err(DotCfgError::Io)?;
+    pub fn find_in_ancestors(self) -> Result<Option<Self>, Error> {
+        let cwd = std::env::current_dir().map_err(Error::Io)?;
         self.find_in_ancestors_from(cwd)
     }
 
@@ -202,10 +202,7 @@ impl DotCfg {
     /// # use dotcfg::DotCfg;
     /// let cfg = DotCfg::new("mytool").find_in_ancestors_from("/tmp/my/project/src").unwrap();
     /// ```
-    pub fn find_in_ancestors_from(
-        self,
-        start: impl AsRef<Path>,
-    ) -> Result<Option<Self>, DotCfgError> {
+    pub fn find_in_ancestors_from(self, start: impl AsRef<Path>) -> Result<Option<Self>, Error> {
         let ext = match &self.format {
             #[cfg(feature = "toml")]
             Format::Toml => "toml",
@@ -307,7 +304,7 @@ impl DotCfg {
     /// `Ok(None)` means "no prefix configured, or the var is unset" — i.e. fall
     /// through to the file. A var that is set but unreadable is an error rather
     /// than a silent fallback, so a misconfigured environment stays visible.
-    fn env_override(&self, key: &str) -> Result<Option<(String, String)>, DotCfgError> {
+    fn env_override(&self, key: &str) -> Result<Option<(String, String)>, Error> {
         let Some(var) = self.env_var_name(key) else {
             return Ok(None);
         };
@@ -315,16 +312,16 @@ impl DotCfg {
         match std::env::var(&var) {
             Ok(raw) => Ok(Some((var, raw))),
             Err(std::env::VarError::NotPresent) => Ok(None),
-            Err(std::env::VarError::NotUnicode(_)) => Err(DotCfgError::EnvNotUnicode(var)),
+            Err(std::env::VarError::NotUnicode(_)) => Err(Error::EnvNotUnicode(var)),
         }
     }
 
     /// Returns the config directory path
-    pub fn dir(&self) -> Result<PathBuf, DotCfgError> {
+    pub fn dir(&self) -> Result<PathBuf, Error> {
         let dir = match &self.strategy {
             DirStrategy::Dot => {
                 // ~/.toolname/ — Unix convention, we resolve manually
-                let home = home::home_dir().ok_or(DotCfgError::NoHomeDir)?;
+                let home = home::home_dir().ok_or(Error::NoHomeDir)?;
                 home.join(format!(".{}", self.app_name))
             }
             DirStrategy::Xdg => {
@@ -335,7 +332,7 @@ impl DotCfg {
                     author: "".to_string(),
                     app_name: self.app_name.clone(),
                 })
-                .map_err(|_| DotCfgError::NoHomeDir)?;
+                .map_err(|_| Error::NoHomeDir)?;
                 strategy.config_dir()
             }
             DirStrategy::Custom(path) => path.clone(),
@@ -344,7 +341,7 @@ impl DotCfg {
     }
 
     /// Returns the full config file path
-    pub fn file_path(&self) -> Result<PathBuf, DotCfgError> {
+    pub fn file_path(&self) -> Result<PathBuf, Error> {
         let ext = match self.format {
             #[cfg(feature = "toml")]
             Format::Toml => "toml",
@@ -357,12 +354,12 @@ impl DotCfg {
     }
 
     /// Returns true if the config file exists
-    pub fn exists(&self) -> Result<bool, DotCfgError> {
+    pub fn exists(&self) -> Result<bool, Error> {
         Ok(self.file_path()?.exists())
     }
 
     /// Ensures the config directory exists, creating it if needed
-    fn ensure_dir(&self) -> Result<(), DotCfgError> {
+    fn ensure_dir(&self) -> Result<(), Error> {
         let dir = self.dir()?;
         if !dir.exists() {
             fs::create_dir_all(&dir)?;
@@ -374,7 +371,7 @@ impl DotCfg {
     ///
     /// Returns `None` if the file doesn't exist — no auto-create.
     /// Use [`Self::load_or_default`] if you want auto-create behavior.
-    pub fn load<T>(&self) -> Result<Option<T>, DotCfgError>
+    pub fn load<T>(&self) -> Result<Option<T>, Error>
     where
         T: for<'de> Deserialize<'de>,
     {
@@ -401,17 +398,17 @@ impl DotCfg {
     /// Load the config or return an error if it doesn't exist.
     ///
     /// Useful when your CLI requires setup before use.
-    pub fn load_or_error<T>(&self) -> Result<T, DotCfgError>
+    pub fn load_or_error<T>(&self) -> Result<T, Error>
     where
         T: for<'de> Deserialize<'de>,
     {
-        self.load()?.ok_or(DotCfgError::NotFound)
+        self.load()?.ok_or(Error::NotFound)
     }
 
     /// Load the config or create it with default values if it doesn't exist.
     ///
     /// This is the confy-style behavior — opt-in.
-    pub fn load_or_default<T>(&self) -> Result<T, DotCfgError>
+    pub fn load_or_default<T>(&self) -> Result<T, Error>
     where
         T: for<'de> Deserialize<'de> + Serialize + Default,
     {
@@ -428,7 +425,7 @@ impl DotCfg {
     /// Save a config struct to disk.
     ///
     /// Creates the config directory if it doesn't exist.
-    pub fn save<T: Serialize>(&self, config: &T) -> Result<(), DotCfgError> {
+    pub fn save<T: Serialize>(&self, config: &T) -> Result<(), Error> {
         self.ensure_dir()?;
         let path = self.file_path()?;
 
@@ -452,7 +449,7 @@ impl DotCfg {
     /// Returns the value as a `String`. If [`Self::with_env_prefix`] is set and
     /// the matching environment variable exists, its raw value is returned
     /// as-is and the file is not read.
-    pub fn get(&self, key: &str) -> Result<String, DotCfgError> {
+    pub fn get(&self, key: &str) -> Result<String, Error> {
         if let Some((_, raw)) = self.env_override(key)? {
             return Ok(raw);
         }
@@ -460,7 +457,7 @@ impl DotCfg {
         let path = self.file_path()?;
 
         if !path.exists() {
-            return Err(DotCfgError::NotFound);
+            return Err(Error::NotFound);
         }
 
         let content = fs::read_to_string(&path)?;
@@ -490,7 +487,7 @@ impl DotCfg {
     ///
     /// Creates the config file and directory if they don't exist.
     /// If the file exists, only the specified key is updated — everything else is preserved.
-    pub fn set(&self, key: &str, value: &str) -> Result<(), DotCfgError> {
+    pub fn set(&self, key: &str, value: &str) -> Result<(), Error> {
         let path = self.file_path()?;
 
         match self.format {
@@ -569,12 +566,12 @@ impl DotCfg {
     ///
     /// # Errors
     ///
-    /// - [`DotCfgError::NotFound`] if the config file doesn't exist
-    /// - [`DotCfgError::KeyNotFound`] if the key isn't present
-    /// - [`DotCfgError::EnvParse`] if an env override isn't readable as a `T`
+    /// - [`Error::NotFound`] if the config file doesn't exist
+    /// - [`Error::KeyNotFound`] if the key isn't present
+    /// - [`Error::EnvParse`] if an env override isn't readable as a `T`
     ///   (a bad override is never silently ignored in favor of the file)
     /// - the format's own (de)serialization error if the file value isn't a `T`
-    pub fn get_as<T: serde::de::DeserializeOwned>(&self, key: &str) -> Result<T, DotCfgError> {
+    pub fn get_as<T: serde::de::DeserializeOwned>(&self, key: &str) -> Result<T, Error> {
         if let Some((var, raw)) = self.env_override(key)? {
             return env::from_env_str(&var, &raw);
         }
@@ -582,7 +579,7 @@ impl DotCfg {
         let path = self.file_path()?;
 
         if !path.exists() {
-            return Err(DotCfgError::NotFound);
+            return Err(Error::NotFound);
         }
 
         let content = fs::read_to_string(&path)?;
@@ -629,7 +626,7 @@ impl DotCfg {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn set_val<T: Serialize>(&self, key: &str, value: T) -> Result<(), DotCfgError> {
+    pub fn set_val<T: Serialize>(&self, key: &str, value: T) -> Result<(), Error> {
         let path = self.file_path()?;
 
         match self.format {
@@ -684,7 +681,7 @@ impl DotCfg {
     }
 
     /// Delete the config file. The directory is kept.
-    pub fn delete_file(&self) -> Result<(), DotCfgError> {
+    pub fn delete_file(&self) -> Result<(), Error> {
         let path = self.file_path()?;
         if path.exists() {
             fs::remove_file(path)?;
@@ -693,7 +690,7 @@ impl DotCfg {
     }
 
     /// Delete the entire config directory and all its contents.
-    pub fn delete_dir(&self) -> Result<(), DotCfgError> {
+    pub fn delete_dir(&self) -> Result<(), Error> {
         let dir = self.dir()?;
         if dir.exists() {
             fs::remove_dir_all(dir)?;
@@ -708,7 +705,7 @@ impl DotCfg {
 /// [`DotCfg::get`] (which stringifies the node) and [`DotCfg::get_as`]
 /// (which deserializes it).
 #[cfg(feature = "toml")]
-fn get_toml_node<'a>(value: &'a toml::Value, key: &str) -> Result<&'a toml::Value, DotCfgError> {
+fn get_toml_node<'a>(value: &'a toml::Value, key: &str) -> Result<&'a toml::Value, Error> {
     let parts: Vec<&str> = key.splitn(2, '.').collect();
 
     match parts.as_slice() {
@@ -716,28 +713,24 @@ fn get_toml_node<'a>(value: &'a toml::Value, key: &str) -> Result<&'a toml::Valu
 
         [section, field] => value.get(section).and_then(|s| s.get(field)),
 
-        _ => return Err(DotCfgError::InvalidKey(key.to_string())),
+        _ => return Err(Error::InvalidKey(key.to_string())),
     }
-    .ok_or_else(|| DotCfgError::KeyNotFound(key.to_string()))
+    .ok_or_else(|| Error::KeyNotFound(key.to_string()))
 }
 
 #[cfg(feature = "toml")]
-fn get_toml_value(value: &toml::Value, key: &str) -> Result<String, DotCfgError> {
+fn get_toml_value(value: &toml::Value, key: &str) -> Result<String, Error> {
     get_toml_node(value, key).map(toml_val_to_string)
 }
 
 /// Write a raw value node at `key`, creating the intermediate table for a
 /// `section.field` key. Shared by [`DotCfg::set`] and [`DotCfg::set_val`].
 #[cfg(feature = "toml")]
-fn set_toml_node(
-    value: &mut toml::Value,
-    key: &str,
-    new_val: toml::Value,
-) -> Result<(), DotCfgError> {
+fn set_toml_node(value: &mut toml::Value, key: &str, new_val: toml::Value) -> Result<(), Error> {
     let parts: Vec<&str> = key.splitn(2, '.').collect();
     let table = value
         .as_table_mut()
-        .ok_or_else(|| DotCfgError::NotATable("root".to_string()))?;
+        .ok_or_else(|| Error::NotATable("root".to_string()))?;
 
     match parts.as_slice() {
         [field] => {
@@ -750,18 +743,18 @@ fn set_toml_node(
 
             let section_table = section_val
                 .as_table_mut()
-                .ok_or_else(|| DotCfgError::NotATable(section.to_string()))?;
+                .ok_or_else(|| Error::NotATable(section.to_string()))?;
 
             section_table.insert(field.to_string(), new_val);
         }
-        _ => return Err(DotCfgError::InvalidKey(key.to_string())),
+        _ => return Err(Error::InvalidKey(key.to_string())),
     }
 
     Ok(())
 }
 
 #[cfg(feature = "toml")]
-fn set_toml_value(value: &mut toml::Value, key: &str, new_val: &str) -> Result<(), DotCfgError> {
+fn set_toml_value(value: &mut toml::Value, key: &str, new_val: &str) -> Result<(), Error> {
     set_toml_node(value, key, toml::Value::String(new_val.to_string()))
 }
 
@@ -786,7 +779,7 @@ fn toml_val_to_string(value: &toml::Value) -> String {
 fn get_json_node<'a>(
     value: &'a serde_json::Value,
     key: &str,
-) -> Result<&'a serde_json::Value, DotCfgError> {
+) -> Result<&'a serde_json::Value, Error> {
     let parts: Vec<&str> = key.splitn(2, '.').collect();
 
     match parts.as_slice() {
@@ -794,13 +787,13 @@ fn get_json_node<'a>(
 
         [section, field] => value.get(section).and_then(|s| s.get(field)),
 
-        _ => return Err(DotCfgError::InvalidKey(key.to_string())),
+        _ => return Err(Error::InvalidKey(key.to_string())),
     }
-    .ok_or_else(|| DotCfgError::KeyNotFound(key.to_string()))
+    .ok_or_else(|| Error::KeyNotFound(key.to_string()))
 }
 
 #[cfg(feature = "json")]
-fn get_json_value(value: &serde_json::Value, key: &str) -> Result<String, DotCfgError> {
+fn get_json_value(value: &serde_json::Value, key: &str) -> Result<String, Error> {
     get_json_node(value, key).map(json_val_to_string)
 }
 
@@ -810,11 +803,11 @@ fn set_json_node(
     value: &mut serde_json::Value,
     key: &str,
     new_val: serde_json::Value,
-) -> Result<(), DotCfgError> {
+) -> Result<(), Error> {
     let parts: Vec<&str> = key.splitn(2, '.').collect();
     let obj = value
         .as_object_mut()
-        .ok_or_else(|| DotCfgError::NotATable("root".to_string()))?;
+        .ok_or_else(|| Error::NotATable("root".to_string()))?;
 
     match parts.as_slice() {
         [field] => {
@@ -827,22 +820,18 @@ fn set_json_node(
 
             let section_obj = section_val
                 .as_object_mut()
-                .ok_or_else(|| DotCfgError::NotATable(section.to_string()))?;
+                .ok_or_else(|| Error::NotATable(section.to_string()))?;
 
             section_obj.insert(field.to_string(), new_val);
         }
-        _ => return Err(DotCfgError::InvalidKey(key.to_string())),
+        _ => return Err(Error::InvalidKey(key.to_string())),
     }
 
     Ok(())
 }
 
 #[cfg(feature = "json")]
-fn set_json_value(
-    value: &mut serde_json::Value,
-    key: &str,
-    new_val: &str,
-) -> Result<(), DotCfgError> {
+fn set_json_value(value: &mut serde_json::Value, key: &str, new_val: &str) -> Result<(), Error> {
     set_json_node(value, key, serde_json::Value::String(new_val.to_string()))
 }
 
@@ -865,7 +854,7 @@ fn json_val_to_string(value: &serde_json::Value) -> String {
 fn get_yaml_node<'a>(
     value: &'a serde_yaml_ng::Value,
     key: &str,
-) -> Result<&'a serde_yaml_ng::Value, DotCfgError> {
+) -> Result<&'a serde_yaml_ng::Value, Error> {
     let parts: Vec<&str> = key.splitn(2, '.').collect();
 
     match parts.as_slice() {
@@ -873,13 +862,13 @@ fn get_yaml_node<'a>(
 
         [section, field] => value.get(section).and_then(|s| s.get(field)),
 
-        _ => return Err(DotCfgError::InvalidKey(key.to_string())),
+        _ => return Err(Error::InvalidKey(key.to_string())),
     }
-    .ok_or_else(|| DotCfgError::KeyNotFound(key.to_string()))
+    .ok_or_else(|| Error::KeyNotFound(key.to_string()))
 }
 
 #[cfg(feature = "yaml")]
-fn get_yaml_value(value: &serde_yaml_ng::Value, key: &str) -> Result<String, DotCfgError> {
+fn get_yaml_value(value: &serde_yaml_ng::Value, key: &str) -> Result<String, Error> {
     get_yaml_node(value, key).map(yaml_val_to_string)
 }
 
@@ -889,11 +878,11 @@ fn set_yaml_node(
     value: &mut serde_yaml_ng::Value,
     key: &str,
     new_val: serde_yaml_ng::Value,
-) -> Result<(), DotCfgError> {
+) -> Result<(), Error> {
     let parts: Vec<&str> = key.splitn(2, '.').collect();
     let map = value
         .as_mapping_mut()
-        .ok_or_else(|| DotCfgError::NotATable("root".to_string()))?;
+        .ok_or_else(|| Error::NotATable("root".to_string()))?;
 
     match parts.as_slice() {
         [field] => {
@@ -906,22 +895,18 @@ fn set_yaml_node(
 
             let section_map = section_val
                 .as_mapping_mut()
-                .ok_or_else(|| DotCfgError::NotATable(section.to_string()))?;
+                .ok_or_else(|| Error::NotATable(section.to_string()))?;
 
             section_map.insert(serde_yaml_ng::Value::String(field.to_string()), new_val);
         }
-        _ => return Err(DotCfgError::InvalidKey(key.to_string())),
+        _ => return Err(Error::InvalidKey(key.to_string())),
     }
 
     Ok(())
 }
 
 #[cfg(feature = "yaml")]
-fn set_yaml_value(
-    value: &mut serde_yaml_ng::Value,
-    key: &str,
-    new_val: &str,
-) -> Result<(), DotCfgError> {
+fn set_yaml_value(value: &mut serde_yaml_ng::Value, key: &str, new_val: &str) -> Result<(), Error> {
     set_yaml_node(
         value,
         key,
@@ -1023,7 +1008,7 @@ mod unit_tests {
         // an unset key with no file still reports NotFound
         assert!(matches!(
             cfg.get("username_other").unwrap_err(),
-            DotCfgError::NotFound
+            Error::NotFound
         ));
     }
 
@@ -1051,7 +1036,7 @@ mod unit_tests {
         // a malformed override is an error, not a panic and not a silent fallback
         assert!(matches!(
             cfg.get_as::<u16>("bad").unwrap_err(),
-            DotCfgError::EnvParse(_, _)
+            Error::EnvParse(_, _)
         ));
     }
 

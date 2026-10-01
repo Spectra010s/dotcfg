@@ -1,7 +1,7 @@
 //! Integration tests for dotcfg — derived from manual `../cfgdot` testing.
 //! Each test uses a unique `dotcfg_test_*` app name and cleans up via `delete_dir()`.
 
-use dotcfg::{DotCfg, error::DotCfgError};
+use dotcfg::{DotCfg, Error};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Default)]
@@ -65,7 +65,7 @@ fn load_or_default_creates_file() {
 fn load_or_error_fails_when_missing() {
     let cfg = unique_cfg("load_error");
     let res: Result<TestConfig, _> = cfg.load_or_error();
-    assert!(matches!(res.unwrap_err(), DotCfgError::NotFound));
+    assert!(matches!(res.unwrap_err(), Error::NotFound));
 }
 
 /// Flat key get/set — set should update value and preserve other keys as strings.
@@ -214,7 +214,7 @@ fn yaml_get_set_keys() {
 
     assert!(matches!(
         cfg.get("nope").unwrap_err(),
-        DotCfgError::KeyNotFound(_)
+        Error::KeyNotFound(_)
     ));
 
     cfg.delete_dir().unwrap();
@@ -289,11 +289,11 @@ fn assert_typed_accessors(cfg: &DotCfg) {
     // missing key / missing section both report KeyNotFound, not a panic
     assert!(matches!(
         cfg.get_as::<u16>("nope").unwrap_err(),
-        DotCfgError::KeyNotFound(_)
+        Error::KeyNotFound(_)
     ));
     assert!(matches!(
         cfg.get_as::<u16>("nope.nope").unwrap_err(),
-        DotCfgError::KeyNotFound(_)
+        Error::KeyNotFound(_)
     ));
 }
 
@@ -391,7 +391,7 @@ fn get_as_type_mismatch_errors() {
     // and it is not one of the lookup errors — it comes from serde
     assert!(!matches!(
         res.unwrap_err(),
-        DotCfgError::KeyNotFound(_) | DotCfgError::NotFound
+        Error::KeyNotFound(_) | Error::NotFound
     ));
 
     cfg.delete_dir().unwrap();
@@ -402,7 +402,7 @@ fn get_as_type_mismatch_errors() {
 fn get_as_missing_file_errors() {
     let cfg = unique_cfg("typed_missing");
     let res = cfg.get_as::<u16>("port");
-    assert!(matches!(res.unwrap_err(), DotCfgError::NotFound));
+    assert!(matches!(res.unwrap_err(), Error::NotFound));
 }
 
 // ---------------------------------------------------------------------------
@@ -514,7 +514,7 @@ fn env_malformed_value_errors() {
     cfg.set_val("port", 8080u16).unwrap();
 
     let err = cfg.get_as::<u16>("port").unwrap_err();
-    assert!(matches!(err, DotCfgError::EnvParse(_, _)), "{err}");
+    assert!(matches!(err, Error::EnvParse(_, _)), "{err}");
     // the message names the variable and the offending value
     assert!(err.to_string().contains("notanumber"), "{err}");
 
