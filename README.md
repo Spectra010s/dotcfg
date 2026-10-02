@@ -270,6 +270,7 @@ For the generated Rust API reference, see **https://docs.rs/dotcfg**.
 | `toml`  | ✅      | TOML format support |
 | `json`  | ❌      | JSON format support |
 | `yaml`  | ❌      | YAML format support |
+| `async` | ❌      | Async I/O support via Tokio |
 
 ## License
 

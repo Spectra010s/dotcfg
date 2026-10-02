@@ -30,13 +30,14 @@ cargo clippy --all-targets --all-features -- -D warnings
 
 ## Feature combinations
 
-TOML is enabled by default. JSON and YAML are optional features. Changes that affect serialization, loading, saving, or key access should be checked against the supported formats.
+TOML is enabled by default. JSON, YAML, and async I/O are optional features. Changes that affect serialization, loading, saving, or key access should be checked against the supported formats.
 
 ```sh
 cargo test
 cargo test --no-default-features --features toml
 cargo test --no-default-features --features json
 cargo test --no-default-features --features yaml
+cargo test --no-default-features --features async,toml
 cargo test --all-features
 ```
 

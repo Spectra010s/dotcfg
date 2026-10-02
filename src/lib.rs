@@ -586,6 +586,373 @@ impl DotCfg {
         }
         Ok(())
     }
+
+    /// Ensures the config directory exists, creating it asynchronously if needed
+    #[cfg(feature = "async")]
+    async fn ensure_dir_async(&self) -> Result<(), DotCfgError> {
+        let dir = self.dir()?;
+        if !tokio::fs::try_exists(&dir).await.map_err(DotCfgError::Io)? {
+            tokio::fs::create_dir_all(&dir).await?;
+        }
+        Ok(())
+    }
+
+    /// Load the config file asynchronously.
+    ///
+    /// Returns `None` if the file doesn't exist — no auto-create.
+    /// Use [`Self::load_or_default_async`] if you want auto-create behavior.
+    #[cfg(feature = "async")]
+    pub async fn load_async<T>(&self) -> Result<Option<T>, DotCfgError>
+    where
+        T: for<'de> Deserialize<'de>,
+    {
+        let path = self.file_path()?;
+
+        if !tokio::fs::try_exists(&path)
+            .await
+            .map_err(DotCfgError::Io)?
+        {
+            return Ok(None);
+        }
+
+        let content = tokio::fs::read_to_string(&path).await?;
+
+        let config = match self.format {
+            #[cfg(feature = "toml")]
+            Format::Toml => toml::from_str(&content)?,
+            #[cfg(feature = "json")]
+            Format::Json => serde_json::from_str(&content)?,
+            #[cfg(feature = "yaml")]
+            Format::Yaml => serde_yaml_ng::from_str(&content)?,
+        };
+
+        Ok(Some(config))
+    }
+
+    /// Load the config or return an error if it doesn't exist (async).
+    #[cfg(feature = "async")]
+    pub async fn load_or_error_async<T>(&self) -> Result<T, DotCfgError>
+    where
+        T: for<'de> Deserialize<'de>,
+    {
+        self.load_async().await?.ok_or(DotCfgError::NotFound)
+    }
+
+    /// Load the config or create it with default values asynchronously if it doesn't exist.
+    #[cfg(feature = "async")]
+    pub async fn load_or_default_async<T>(&self) -> Result<T, DotCfgError>
+    where
+        T: for<'de> Deserialize<'de> + Serialize + Default,
+    {
+        match self.load_async().await? {
+            Some(cfg) => Ok(cfg),
+            None => {
+                let default = T::default();
+                self.save_async(&default).await?;
+                Ok(default)
+            }
+        }
+    }
+
+    /// Save a config struct to disk asynchronously.
+    #[cfg(feature = "async")]
+    pub async fn save_async<T: Serialize>(&self, config: &T) -> Result<(), DotCfgError> {
+        self.ensure_dir_async().await?;
+        let path = self.file_path()?;
+
+        let content = match self.format {
+            #[cfg(feature = "toml")]
+            Format::Toml => toml::to_string_pretty(config)?,
+            #[cfg(feature = "json")]
+            Format::Json => serde_json::to_string_pretty(config)?,
+            #[cfg(feature = "yaml")]
+            Format::Yaml => serde_yaml_ng::to_string(config)?,
+        };
+
+        tokio::fs::write(&path, content).await?;
+        Ok(())
+    }
+
+    /// Get a single config value by key asynchronously.
+    #[cfg(feature = "async")]
+    pub async fn get_async(&self, key: &str) -> Result<String, DotCfgError> {
+        if let Some((_, raw)) = self.env_override(key)? {
+            return Ok(raw);
+        }
+
+        let path = self.file_path()?;
+
+        if !tokio::fs::try_exists(&path)
+            .await
+            .map_err(DotCfgError::Io)?
+        {
+            return Err(DotCfgError::NotFound);
+        }
+
+        let content = tokio::fs::read_to_string(&path).await?;
+
+        match self.format {
+            #[cfg(feature = "toml")]
+            Format::Toml => {
+                let value: toml::Value = toml::from_str(&content)?;
+                get_toml_value(&value, key)
+            }
+            #[cfg(feature = "json")]
+            Format::Json => {
+                let value: serde_json::Value = serde_json::from_str(&content)?;
+                get_json_value(&value, key)
+            }
+            #[cfg(feature = "yaml")]
+            Format::Yaml => {
+                let value: serde_yaml_ng::Value = serde_yaml_ng::from_str(&content)?;
+                get_yaml_value(&value, key)
+            }
+        }
+    }
+
+    /// Set a single config value by key asynchronously.
+    #[cfg(feature = "async")]
+    pub async fn set_async(&self, key: &str, value: &str) -> Result<(), DotCfgError> {
+        let path = self.file_path()?;
+
+        match self.format {
+            #[cfg(feature = "toml")]
+            Format::Toml => {
+                let exists = tokio::fs::try_exists(&path)
+                    .await
+                    .map_err(DotCfgError::Io)?;
+                let mut table: toml::Value = if exists {
+                    let content = tokio::fs::read_to_string(&path).await?;
+                    toml::from_str(&content)?
+                } else {
+                    toml::Value::Table(toml::map::Map::new())
+                };
+
+                set_toml_value(&mut table, key, value)?;
+                self.ensure_dir_async().await?;
+                tokio::fs::write(&path, toml::to_string_pretty(&table)?).await?;
+            }
+            #[cfg(feature = "json")]
+            Format::Json => {
+                let exists = tokio::fs::try_exists(&path)
+                    .await
+                    .map_err(DotCfgError::Io)?;
+                let mut json: serde_json::Value = if exists {
+                    let content = tokio::fs::read_to_string(&path).await?;
+                    serde_json::from_str(&content)?
+                } else {
+                    serde_json::Value::Object(serde_json::Map::new())
+                };
+
+                set_json_value(&mut json, key, value)?;
+                self.ensure_dir_async().await?;
+                tokio::fs::write(&path, serde_json::to_string_pretty(&json)?).await?;
+            }
+            #[cfg(feature = "yaml")]
+            Format::Yaml => {
+                let exists = tokio::fs::try_exists(&path)
+                    .await
+                    .map_err(DotCfgError::Io)?;
+                let mut yaml: serde_yaml_ng::Value = if exists {
+                    let content = tokio::fs::read_to_string(&path).await?;
+                    serde_yaml_ng::from_str(&content)?
+                } else {
+                    serde_yaml_ng::Value::Mapping(serde_yaml_ng::Mapping::new())
+                };
+
+                set_yaml_value(&mut yaml, key, value)?;
+                self.ensure_dir_async().await?;
+                tokio::fs::write(&path, serde_yaml_ng::to_string(&yaml)?).await?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Get a single config value by key, deserialized into `T` asynchronously.
+    #[cfg(feature = "async")]
+    pub async fn get_as_async<T: serde::de::DeserializeOwned>(
+        &self,
+        key: &str,
+    ) -> Result<T, DotCfgError> {
+        if let Some((var, raw)) = self.env_override(key)? {
+            return env::from_env_str(&var, &raw);
+        }
+
+        let path = self.file_path()?;
+
+        if !tokio::fs::try_exists(&path)
+            .await
+            .map_err(DotCfgError::Io)?
+        {
+            return Err(DotCfgError::NotFound);
+        }
+
+        let content = tokio::fs::read_to_string(&path).await?;
+
+        match self.format {
+            #[cfg(feature = "toml")]
+            Format::Toml => {
+                let value: toml::Value = toml::from_str(&content)?;
+                Ok(get_toml_node(&value, key)?.clone().try_into()?)
+            }
+            #[cfg(feature = "json")]
+            Format::Json => {
+                let value: serde_json::Value = serde_json::from_str(&content)?;
+                Ok(serde_json::from_value(get_json_node(&value, key)?.clone())?)
+            }
+            #[cfg(feature = "yaml")]
+            Format::Yaml => {
+                let value: serde_yaml_ng::Value = serde_yaml_ng::from_str(&content)?;
+                Ok(serde_yaml_ng::from_value(
+                    get_yaml_node(&value, key)?.clone(),
+                )?)
+            }
+        }
+    }
+
+    /// Set a single config value by key from any [`Serialize`] type asynchronously.
+    #[cfg(feature = "async")]
+    pub async fn set_val_async<T: Serialize>(
+        &self,
+        key: &str,
+        value: T,
+    ) -> Result<(), DotCfgError> {
+        let path = self.file_path()?;
+
+        match self.format {
+            #[cfg(feature = "toml")]
+            Format::Toml => {
+                let new_val = toml::Value::try_from(value)?;
+                let exists = tokio::fs::try_exists(&path)
+                    .await
+                    .map_err(DotCfgError::Io)?;
+
+                let mut table: toml::Value = if exists {
+                    let content = tokio::fs::read_to_string(&path).await?;
+                    toml::from_str(&content)?
+                } else {
+                    toml::Value::Table(toml::map::Map::new())
+                };
+
+                set_toml_node(&mut table, key, new_val)?;
+                self.ensure_dir_async().await?;
+                tokio::fs::write(&path, toml::to_string_pretty(&table)?).await?;
+            }
+            #[cfg(feature = "json")]
+            Format::Json => {
+                let new_val = serde_json::to_value(value)?;
+                let exists = tokio::fs::try_exists(&path)
+                    .await
+                    .map_err(DotCfgError::Io)?;
+
+                let mut json: serde_json::Value = if exists {
+                    let content = tokio::fs::read_to_string(&path).await?;
+                    serde_json::from_str(&content)?
+                } else {
+                    serde_json::Value::Object(serde_json::Map::new())
+                };
+
+                set_json_node(&mut json, key, new_val)?;
+                self.ensure_dir_async().await?;
+                tokio::fs::write(&path, serde_json::to_string_pretty(&json)?).await?;
+            }
+            #[cfg(feature = "yaml")]
+            Format::Yaml => {
+                let new_val = serde_yaml_ng::to_value(value)?;
+                let exists = tokio::fs::try_exists(&path)
+                    .await
+                    .map_err(DotCfgError::Io)?;
+
+                let mut yaml: serde_yaml_ng::Value = if exists {
+                    let content = tokio::fs::read_to_string(&path).await?;
+                    serde_yaml_ng::from_str(&content)?
+                } else {
+                    serde_yaml_ng::Value::Mapping(serde_yaml_ng::Mapping::new())
+                };
+
+                set_yaml_node(&mut yaml, key, new_val)?;
+                self.ensure_dir_async().await?;
+                tokio::fs::write(&path, serde_yaml_ng::to_string(&yaml)?).await?;
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Search ancestors for a project config asynchronously.
+    #[cfg(feature = "async")]
+    pub async fn find_in_ancestors_async(self) -> Result<Option<Self>, DotCfgError> {
+        let cwd = std::env::current_dir().map_err(DotCfgError::Io)?;
+        self.find_in_ancestors_from_async(cwd).await
+    }
+
+    /// Same as `find_in_ancestors_async` but starts from an explicit `start` directory.
+    #[cfg(feature = "async")]
+    pub async fn find_in_ancestors_from_async(
+        self,
+        start: impl AsRef<Path>,
+    ) -> Result<Option<Self>, DotCfgError> {
+        let ext = match &self.format {
+            #[cfg(feature = "toml")]
+            Format::Toml => "toml",
+            #[cfg(feature = "json")]
+            Format::Json => "json",
+            #[cfg(feature = "yaml")]
+            Format::Yaml => "yaml",
+        };
+        let file_name = format!("{}.{}", self.filename, ext);
+        let dot_dir = format!(".{}", self.app_name);
+        for ancestor in start.as_ref().ancestors() {
+            let dir = ancestor.join(&dot_dir);
+            let file = dir.join(&file_name);
+            if tokio::fs::try_exists(&file).await.unwrap_or(false) {
+                if let Ok(meta) = tokio::fs::metadata(&file).await {
+                    if meta.is_file() {
+                        return Ok(Some(Self {
+                            app_name: self.app_name,
+                            strategy: DirStrategy::Custom(dir),
+                            format: self.format,
+                            filename: self.filename,
+                            env_prefix: self.env_prefix,
+                        }));
+                    }
+                }
+            }
+        }
+        Ok(None)
+    }
+
+    /// Returns true if the config file exists (async).
+    #[cfg(feature = "async")]
+    pub async fn exists_async(&self) -> Result<bool, DotCfgError> {
+        tokio::fs::try_exists(self.file_path()?)
+            .await
+            .map_err(DotCfgError::Io)
+    }
+
+    /// Delete the config file asynchronously. The directory is kept.
+    #[cfg(feature = "async")]
+    pub async fn delete_file_async(&self) -> Result<(), DotCfgError> {
+        let path = self.file_path()?;
+        if tokio::fs::try_exists(&path)
+            .await
+            .map_err(DotCfgError::Io)?
+        {
+            tokio::fs::remove_file(path).await?;
+        }
+        Ok(())
+    }
+
+    /// Delete the entire config directory and all its contents asynchronously.
+    #[cfg(feature = "async")]
+    pub async fn delete_dir_async(&self) -> Result<(), DotCfgError> {
+        let dir = self.dir()?;
+        if tokio::fs::try_exists(&dir).await.map_err(DotCfgError::Io)? {
+            tokio::fs::remove_dir_all(dir).await?;
+        }
+        Ok(())
+    }
 }
 
 // Unit tests for private helpers
