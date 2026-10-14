@@ -1,0 +1,121 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import CodeBlock from '../../components/CodeBlock.astro';
+import Callout from '../../components/Callout.astro';
+
+const nested = `# defaults
+[server]
+host = "127.0.0.1"
+port = 3000
+tags = ["stable"]
+
+# project
+[server]
+port = 8080
+tags = ["local"]
+
+# result
+server.host = "127.0.0.1"
+server.port = 8080
+server.tags = ["local"]`;
+---
+
+<DocsLayout
+  title="Layers and resolution — dotcfg"
+  description="Understand ConfigStack precedence, merging, missing sources, and environment overrides."
+>
+  <article class="[&_p]:max-w-[720px]">
+    <span class="text-[13px] font-bold text-primary">ConfigStack</span>
+    <h1 class="m-0 mb-5 mt-3 text-[clamp(38px,7vw,64px)] leading-[1.02] tracking-[-0.045em] max-[760px]:text-[44px]">
+      Layers & resolution
+    </h1>
+    <p class="max-w-[680px] text-xl text-muted-foreground max-[760px]:text-lg">
+      When you read from a ConfigStack, dotcfg combines its sources and works out the value your
+      application should see. This page explains those rules before you have to depend on them.
+    </p>
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      Later layers win
+    </h2>
+    <p>
+      The first layer has the lowest priority. Each layer after it may replace values from the
+      layers before it. This ordering is called <strong>precedence</strong>: it answers “which value
+      wins when more than one source provides the same setting?”
+    </p>
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      Nested settings are combined
+    </h2>
+    <p>
+      Replacing one nested setting should not make unrelated settings disappear. When both sides are
+      maps or tables, ConfigStack combines their keys and only replaces the parts that overlap.
+      This is often called a <strong>deep merge</strong>.
+    </p>
+    <CodeBlock label="Example" code={nested} />
+    <p>
+      Notice that <code>server.host</code> survives because the project layer did not replace it.
+      The port changes because both layers define it.
+    </p>
+    <p>
+      Lists behave differently. ConfigStack does not try to guess how two lists should be combined,
+      so a later list replaces the earlier list. Other single values, such as strings, numbers, and
+      booleans, replace earlier values too.
+    </p>
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      Sources can use different formats
+    </h2>
+    <p>
+      One source can use TOML while another uses JSON or YAML. Each <code>DotCfg</code> reads its own
+      file format first; ConfigStack then combines the resulting values. You do not need to convert
+      all of your source files to the same format just to layer them.
+    </p>
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      What happens when a source has no values?
+    </h2>
+    <p>
+      A source file may not exist yet. That is fine: ConfigStack skips the missing source and keeps
+      resolving the others. A file that exists but is valid and empty contributes no settings.
+    </p>
+    <p>
+      A broken file is different. If a source contains malformed TOML, JSON, or YAML, ConfigStack
+      returns the parse error instead of pretending that source was missing. This helps you notice a
+      configuration mistake instead of silently running with older values.
+    </p>
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      Put environment variables on top
+    </h2>
+    <p>
+      You can give the stack an environment prefix with <code>with_env_prefix()</code>. Matching
+      environment variables then have higher priority than every file layer.
+    </p>
+    <CodeBlock
+      label="Rust"
+      code={'let cfg = ConfigStack::new()\n    .layer("defaults", defaults)\n    .layer("project", project)\n    .with_env_prefix("APP")\n    .build()?;'}
+    />
+    <p>
+      ConfigStack uses two underscores to mark a nested key. For example,{' '}
+      <code>APP_DATABASE__PORT</code> overrides <code>database.port</code>. A normal underscore is
+      kept as part of the key, so <code>APP_API_KEY</code> means <code>api_key</code>, not{' '}
+      <code>api.key</code>.
+    </p>
+    <Callout type="info" title="Why two underscores?">
+      <p>
+        ConfigStack can discover settings that exist only in the environment. Using <code>__</code>
+        for nesting lets it tell the difference between a nested path and a key whose real name
+        contains an underscore.
+      </p>
+    </Callout>
+    <p>
+      The final order is therefore: earlier file layers, later file layers, then environment
+      variables.
+    </p>
+
+    <p class="mt-[34px]">
+      Next, learn <a class="font-bold text-primary" href="/config-stack/reading-writing">how to read the
+      result and choose which source receives writes</a>.
+    </p>
+  </article>
+</DocsLayout>

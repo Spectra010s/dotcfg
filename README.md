@@ -231,7 +231,7 @@ Writes never flatten the resolved view. `set`, `set_val`, and `save` go only to 
 
 For stack environment overrides, a single underscore stays inside a key and `__` marks nesting: `APP_API_KEY` → `api_key`, `APP_DATABASE__PORT` → `database.port`.
 
-See the [layered configuration guide](https://dotcfg.pxxl.click/layering) for merge, write-target, environment, and source-access behavior.
+See the [layered configuration guide](https://dotcfg.pxxl.click/config-stack) for merge, write-target, environment, and source-access behavior.
 
 ## Errors
 
