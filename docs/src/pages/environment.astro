@@ -1,6 +1,7 @@
 ---
 import DocsLayout from '../layouts/DocsLayout.astro';
 import CodeBlock from '../components/CodeBlock.astro';
+import Callout from '../components/Callout.astro';
 ---
 
 <DocsLayout
@@ -85,6 +86,29 @@ import CodeBlock from '../components/CodeBlock.astro';
       A single environment variable cannot represent a struct or map. Express those values as nested
       keys instead—for example, use <code>MYAPP_SERVER_HOST</code> for <code>server.host</code>.
     </p>
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      Environment variables in ConfigStack
+    </h2>
+    <p>
+      A <code>ConfigStack</code> has one environment prefix for its resolved view. Stack reads use a
+      reversible naming rule: a single underscore stays inside a key, while <code>__</code> marks
+      nesting. For example, <code>APP_API_KEY</code> maps to <code>api_key</code> and{' '}
+      <code>APP_DATABASE__PORT</code> maps to <code>database.port</code>.
+    </p>
+    <p>
+      The stack prefix is applied after all file layers, so environment values have the highest read
+      precedence. A source's own prefix still applies when you access that source directly with{' '}
+      <code>stack.source("name")</code>; it does not participate in resolved stack reads.
+    </p>
+    <Callout type="info" title="DotCfg and ConfigStack use different nested env syntax">
+      <p>
+        Direct <code>DotCfg</code> reads keep the existing single-underscore mapping, such as{' '}
+        <code>MYAPP_USER_NAME</code> for <code>user.name</code>. <code>ConfigStack</code> uses{' '}
+        <code>__</code> for nesting so it can discover environment-only fields without confusing
+        nested paths with keys that already contain underscores.
+      </p>
+    </Callout>
 
     <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
       Writes never touch the environment

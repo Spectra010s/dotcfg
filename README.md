@@ -23,6 +23,7 @@ Most config crates either lock you into a fixed directory strategy or only handl
 - Load the whole config or get/set individual keys without touching the rest
 - Read and write keys as real types — numbers, bools, arrays, structs — not just strings
 - Returns `None` if config doesn't exist — no magic, no forced defaults unless you want them
+- Compose named file sources with `ConfigStack` when one config file is not enough
 
 ### Comparison with `confy`
 
@@ -203,6 +204,38 @@ let port: u16 = cfg.get_as("port")?;
 ```
 
 `get` returns the raw env string, `get_as` parses it (`bool` as `true`/`false`/`1`/`0`, numbers, `Vec` as comma-separated). `set`/`set_val` still write only to the file.
+
+## Layered Configuration
+
+Use `ConfigStack` when configuration comes from more than one file-backed source. `DotCfg` stays the single-source API; the stack composes several named `DotCfg` values into one resolved view.
+
+```rust
+use dotcfg::{ConfigStack, DotCfg};
+
+let defaults = DotCfg::new("myapp").at_dir("/etc/myapp");
+let project = DotCfg::new("myapp").at_dir("./.myapp");
+
+let cfg = ConfigStack::new()
+    .layer("defaults", defaults)
+    .layer("project", project)
+    .write_to("project")
+    .with_env_prefix("APP")
+    .build()?;
+
+let port: u16 = cfg.get_as("server.port")?;
+```
+
+Precedence is **earlier layers → later layers → environment**. Nested maps deep-merge; arrays and scalar values replace the lower-precedence value. Missing source files are skipped, empty files contribute nothing, and malformed files are errors.
+
+Writes never flatten the resolved view. `set`, `set_val`, and `save` go only to the source named by `write_to`; without a write target, the stack is read-only. Use `source("name")` when you intentionally want to access one source directly.
+
+For stack environment overrides, a single underscore stays inside a key and `__` marks nesting: `APP_API_KEY` → `api_key`, `APP_DATABASE__PORT` → `database.port`.
+
+See the [layered configuration guide](https://dotcfg.pxxl.click/layering) for merge, write-target, environment, and source-access behavior.
+
+## Errors
+
+The public error type is `dotcfg::Error`. `DotCfgError` remains as a deprecated alias for migration compatibility. If you exhaustively match errors, account for the format-independent `Serialize`/`Deserialize` variants and the stack errors `DuplicateSource`, `UnknownSource`, and `NoWriteTarget`.
 
 ## Clap Integration
 

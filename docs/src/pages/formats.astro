@@ -64,6 +64,33 @@ import Callout from '../components/Callout.astro';
     />
 
     <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      One value model across formats
+    </h2>
+    <p>
+      dotcfg parses TOML, JSON, and YAML into one internal value tree before key access, typed
+      reads, or layered merging. That keeps <code>get()</code>, <code>get_as()</code>,{' '}
+      <code>set()</code>, <code>set_val()</code>, <code>load()</code>, and <code>save()</code>{' '}
+      aligned across formats instead of maintaining separate behavior for each parser.
+    </p>
+    <div class="my-5 grid grid-cols-2 gap-2.5 max-[760px]:grid-cols-1">
+      <div class="rounded-[9px] border border-border bg-card p-4">
+        <strong class="mb-[7px] block">TOML</strong>
+        <p class="m-0 text-sm text-muted-foreground">Arrays are written in inline array form. TOML datetime values are preserved as opaque values.</p>
+      </div>
+      <div class="rounded-[9px] border border-border bg-card p-4">
+        <strong class="mb-[7px] block">YAML</strong>
+        <p class="m-0 text-sm text-muted-foreground">Output maps are deterministic, and non-string mapping keys are rejected rather than coerced.</p>
+      </div>
+    </div>
+    <Callout type="info" title="serde_json is part of the core value layer">
+      <p>
+        The shared value representation uses <code>serde_json::Value</code> internally, so{' '}
+        <code>serde_json</code> is now a normal dependency even when your application only stores
+        TOML or YAML files.
+      </p>
+    </Callout>
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
       Use your own filename
     </h2>
     <p>

@@ -59,6 +59,23 @@ if let Some(config) = config {
     <CodeBlock label="Rust" code={defaultExample} />
 
     <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      Empty is different from missing
+    </h2>
+    <p>
+      A missing file means there is no source and <code>load()</code> returns <code>Ok(None)</code>.
+      An existing but valid empty file is different: dotcfg treats it as an empty configuration map
+      and attempts to deserialize that map into your requested type. Whether that succeeds depends on
+      the type and its Serde defaults. Invalid syntax is still a parse error.
+    </p>
+    <Callout type="info" title="Three distinct states">
+      <p>
+        <strong>Missing</strong> → absence. <strong>Empty but valid</strong> → empty map.{' '}
+        <strong>Malformed</strong> → parse error. Per-key reads from an empty map return the normal
+        key-not-found error.
+      </p>
+    </Callout>
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
       Save a complete config
     </h2>
     <p>
