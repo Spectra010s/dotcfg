@@ -27,12 +27,14 @@ default = ["toml"]
 toml = ["dep:toml"]
 json = []
 yaml = ["dep:serde_yaml_ng"]
+async = ["dep:tokio"]
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 toml = { version = "0.8", optional = true }
 serde_json = "1"
 serde_yaml_ng = { version = "0.10", optional = true }
+tokio = { version = "1", features = ["fs", "io-util"], optional = true }
 home = "0.5"
 etcetera = "0.8"
 thiserror = "2"
@@ -47,3 +49,11 @@ path = "examples/clap_cli.rs"
 
 [dev-dependencies]
 clap = { version = "4.5", features = ["derive"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "fs", "io-util"] }
+tempfile = "3"
+
+[profile.dev]
+debug = 0
+
+[profile.test]
+debug = 0
