@@ -1,6 +1,7 @@
 ---
 import DocsLayout from '../layouts/DocsLayout.astro';
 import CodeBlock from '../components/CodeBlock.astro';
+import Callout from '../components/Callout.astro';
 ---
 
 <DocsLayout
@@ -27,9 +28,11 @@ import CodeBlock from '../components/CodeBlock.astro';
       }
     />
     <p>
-      The key <code>port</code> maps to <code>MYAPP_PORT</code>. Nested dots become underscores, so{' '}
-      <code>user.name</code> maps to <code>MYAPP_USER_NAME</code>. Both the prefix and key are
-      uppercased for the environment-variable name.
+      The key <code>port</code> maps to <code>MYAPP_PORT</code>. A single underscore stays inside
+      a key, while two underscores mark a nested path. So <code>api_key</code> maps to{' '}
+      <code>MYAPP_API_KEY</code>, and <code>user.name</code> maps to{' '}
+      <code>MYAPP_USER__NAME</code>. Both the prefix and key are uppercased for the
+      environment-variable name.
     </p>
 
     <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
@@ -83,8 +86,31 @@ import CodeBlock from '../components/CodeBlock.astro';
     </h2>
     <p>
       A single environment variable cannot represent a struct or map. Express those values as nested
-      keys instead—for example, use <code>MYAPP_SERVER_HOST</code> for <code>server.host</code>.
+      keys instead—for example, use <code>MYAPP_SERVER__HOST</code> for <code>server.host</code>.
     </p>
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      Environment variables in ConfigStack
+    </h2>
+    <p>
+      <code>ConfigStack</code> uses the same environment naming rule as <code>DotCfg</code>: a
+      single underscore stays inside a key, while <code>__</code> marks nesting. For example,{' '}
+      <code>APP_API_KEY</code> maps to <code>api_key</code> and <code>APP_DATABASE__PORT</code>{' '}
+      maps to <code>database.port</code>.
+    </p>
+    <p>
+      The stack prefix is applied after all file layers, so environment values have the highest read
+      precedence. A source's own prefix still applies when you access that source directly with{' '}
+      <code>stack.source("name")</code>; it does not participate in resolved stack reads.
+    </p>
+    <Callout type="warning" title="Migrating from 0.3.x">
+      <p>
+        Nested environment variables now use <code>__</code>. If you previously used{' '}
+        <code>MYAPP_DATABASE_PORT</code> for <code>database.port</code>, rename it to{' '}
+        <code>MYAPP_DATABASE__PORT</code>. A single underscore is now literal, so{' '}
+        <code>MYAPP_DATABASE_PORT</code> maps to <code>database_port</code>.
+      </p>
+    </Callout>
 
     <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
       Writes never touch the environment

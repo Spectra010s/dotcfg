@@ -1,0 +1,108 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import CodeBlock from '../../components/CodeBlock.astro';
+import Callout from '../../components/Callout.astro';
+
+const buildStack = `use dotcfg::{ConfigStack, DotCfg};
+
+let defaults = DotCfg::new("myapp").at_dir("./config/defaults");
+let project = DotCfg::new("myapp").at_dir("./config/project");
+
+let cfg = ConfigStack::new()
+    .layer("defaults", defaults)
+    .layer("project", project)
+    .build()?;`;
+
+const defaultsFile = `[server]
+host = "127.0.0.1"
+port = 3000`;
+
+const projectFile = `[server]
+port = 8080`;
+
+const result = `server.host = "127.0.0.1"
+server.port = 8080`;
+---
+
+<DocsLayout
+  title="Getting started with ConfigStack — dotcfg"
+  description="Learn when you need more than one configuration source and build your first ConfigStack."
+>
+  <article class="[&_p]:max-w-[720px]">
+    <span class="text-[13px] font-bold text-primary">ConfigStack</span>
+    <h1 class="m-0 mb-5 mt-3 text-[clamp(38px,7vw,64px)] leading-[1.02] tracking-[-0.045em] max-[760px]:text-[44px]">
+      Getting started with ConfigStack
+    </h1>
+    <p class="max-w-[680px] text-xl text-muted-foreground max-[760px]:text-lg">
+      Most applications can use one <code>DotCfg</code> and one config file. Sometimes, though,
+      your settings come from more than one file and some of those settings should override others.
+      <code>ConfigStack</code> is for that case.
+    </p>
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      When one config file is not enough
+    </h2>
+    <p>
+      Imagine an application with a file containing its normal defaults. A project using the
+      application wants a different port, but it should not have to copy every default setting just
+      to change one value.
+    </p>
+    <p>The defaults file contains:</p>
+    <CodeBlock label="defaults/config.toml" code={defaultsFile} />
+    <p>The project file only changes the port:</p>
+    <CodeBlock label="project/config.toml" code={projectFile} />
+    <p>What the application needs to see is:</p>
+    <CodeBlock label="Effective configuration" code={result} />
+    <p>
+      The host still comes from the defaults file, while the project's port wins. ConfigStack lets
+      you describe that relationship instead of manually loading the files and combining them
+      yourself.
+    </p>
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      Build your first stack
+    </h2>
+    <CodeBlock label="Rust" code={buildStack} />
+    <p>
+      Each call to <code>layer()</code> adds one <code>DotCfg</code> source and gives it a name.
+      Here we called them <code>defaults</code> and <code>project</code>. The names let you refer to
+      a particular source later when you need to.
+    </p>
+    <Callout type="info" title="What is a layer?">
+      <p>
+        A layer is simply one named <code>DotCfg</code> source inside the stack. The word describes
+        how the sources are combined: values from later layers can sit on top of values from earlier
+        ones.
+      </p>
+    </Callout>
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      Order matters
+    </h2>
+    <p>
+      Layers are read in the order you add them. If two layers contain the same setting, the later
+      layer wins. In the example above, <code>project</code> comes after <code>defaults</code>, so
+      its <code>server.port</code> value becomes the one your application reads.
+    </p>
+    <div class="my-[18px] flex items-center gap-3 rounded-[9px] border border-border bg-card p-4 max-[760px]:flex-col max-[760px]:items-start">
+      <span class="font-bold">defaults</span>
+      <b class="text-primary">→</b>
+      <span class="font-bold">project</span>
+      <b class="text-primary">→</b>
+      <span class="font-bold">final value</span>
+    </div>
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      DotCfg or ConfigStack?
+    </h2>
+    <p>
+      If your application has one config file, keep using <code>DotCfg</code>. ConfigStack does not
+      replace it. Use ConfigStack when you genuinely have multiple file-backed configuration
+      sources and need one place to read the final values.
+    </p>
+    <p>
+      Next, learn <a class="font-bold text-primary" href="/config-stack/resolution">how layers are combined</a>,
+      including nested settings and environment variables.
+    </p>
+  </article>
+</DocsLayout>

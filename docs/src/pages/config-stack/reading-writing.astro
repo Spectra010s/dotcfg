@@ -1,0 +1,111 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import CodeBlock from '../../components/CodeBlock.astro';
+import Callout from '../../components/Callout.astro';
+
+const writable = `let cfg = ConfigStack::new()
+    .layer("defaults", defaults)
+    .layer("project", project)
+    .write_to("project")
+    .build()?;
+
+cfg.set_val("server.port", 8080u16)?;`;
+---
+
+<DocsLayout
+  title="Reading and writing with ConfigStack — dotcfg"
+  description="Read resolved ConfigStack values and choose exactly which source receives writes."
+>
+  <article class="[&_p]:max-w-[720px]">
+    <span class="text-[13px] font-bold text-primary">ConfigStack</span>
+    <h1 class="m-0 mb-5 mt-3 text-[clamp(38px,7vw,64px)] leading-[1.02] tracking-[-0.045em] max-[760px]:text-[44px]">
+      Reading & writing
+    </h1>
+    <p class="max-w-[680px] text-xl text-muted-foreground max-[760px]:text-lg">
+      Reading from several sources has a natural answer: return the value that wins after the layers
+      are combined. Writing has an extra question: which file should dotcfg change?
+    </p>
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      Read the final configuration
+    </h2>
+    <p>
+      ConfigStack gives you familiar read methods. <code>get()</code> reads one value as a string,
+      <code>get_as()</code> reads one value as a Rust type, and <code>load()</code> deserializes the
+      complete resolved configuration into your struct.
+    </p>
+    <CodeBlock
+      label="Rust"
+      code={'let port: u16 = cfg.get_as("server.port")?;\nlet config: Option<AppConfig> = cfg.load()?;'}
+    />
+    <p>
+      These methods read the <em>result</em> of the stack, not one particular file. That means a
+      value may come from an earlier layer, a later layer, or the environment depending on what is
+      configured.
+    </p>
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      Why writes need a target
+    </h2>
+    <p>
+      Suppose <code>server.port</code> exists in both <code>defaults</code> and{' '}
+      <code>project</code>. If you call <code>set_val("server.port", 8080)</code>, ConfigStack
+      cannot safely guess which file you intended to edit.
+    </p>
+    <p>
+      You choose the writable source with <code>write_to()</code>:
+    </p>
+    <CodeBlock label="Rust" code={writable} />
+    <p>
+      In this example, stack-level writes go only to <code>project</code>. The defaults source is
+      left untouched.
+    </p>
+    <Callout type="info" title="No write_to() means read-only">
+      <p>
+        A stack without a write target can still be read normally. If you try to call{' '}
+        <code>set()</code>, <code>set_val()</code>, or <code>save()</code>, dotcfg returns{' '}
+        <code>Error::NoWriteTarget</code> instead of choosing a file for you.
+      </p>
+    </Callout>
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      save() does not copy the whole stack
+    </h2>
+    <p>
+      <code>save()</code> writes the struct you give it to the selected write target. It does not
+      take values from the other layers or from environment variables and copy them into that file.
+    </p>
+    <p>
+      This matters because the layers still own their own data. A system defaults file should not
+      suddenly be copied into a project file just because you saved project settings.
+    </p>
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      Work with one source directly
+    </h2>
+    <p>
+      Sometimes you do not want the final combined value. You may want to inspect the defaults
+      source itself, or intentionally change one particular source. Use <code>source()</code> for
+      that.
+    </p>
+    <CodeBlock
+      label="Rust"
+      code={'let defaults = cfg.source("defaults")?;\nlet port: u16 = defaults.get_as("server.port")?;'}
+    />
+    <p>
+      <code>source()</code> returns that source's <code>DotCfg</code>, so its normal DotCfg
+      behavior applies. The other layers and the stack's environment prefix are not part of this
+      direct read.
+    </p>
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      Errors that protect the stack
+    </h2>
+    <p>
+      Layer names must be unique. <code>build()</code> returns <code>Error::DuplicateSource</code>
+      if the same name is added twice. If <code>write_to()</code> names a source that was never
+      added, it returns <code>Error::UnknownSource</code>. These checks happen when you build the
+      stack so configuration mistakes are caught before the stack is used.
+    </p>
+  </article>
+</DocsLayout>
