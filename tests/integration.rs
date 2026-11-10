@@ -445,9 +445,9 @@ fn env_overrides_file_value() {
     assert_eq!(cfg.get("username").unwrap(), "alice");
     assert_eq!(cfg.get_as::<String>("username").unwrap(), "alice");
 
-    // and the whole-struct load is untouched by env overrides
+    // and the whole-struct load sees the override too
     let loaded: TestConfig = cfg.load().unwrap().unwrap();
-    assert_eq!(loaded.port, 8080);
+    assert_eq!(loaded.port, 9000);
 
     cfg.delete_dir().unwrap();
 }
@@ -487,15 +487,18 @@ fn set_val_does_not_touch_env_and_env_keeps_precedence() {
     // the write went to the file, not the environment
     assert_eq!(std::env::var(&var).unwrap(), "9000");
 
-    // reads still prefer the override over the value just written
+    // reads still prefer the override over the value just written —
+    // per-key and whole-struct alike
     assert_eq!(cfg.get_as::<u16>("port").unwrap(), 9000);
+    let loaded: TestConfig = cfg.load().unwrap().unwrap();
+    assert_eq!(loaded.port, 9000);
 
-    // the file really did get 1234 — visible via the whole-struct load...
+    // ...and the file value surfaces once the override goes away
+    remove_env(&var);
     let loaded: TestConfig = cfg.load().unwrap().unwrap();
     assert_eq!(loaded.port, 1234);
 
     // ...and via `get_as` once the override goes away
-    remove_env(&var);
     assert_eq!(cfg.get_as::<u16>("port").unwrap(), 1234);
 
     cfg.delete_dir().unwrap();
@@ -521,5 +524,181 @@ fn env_malformed_value_errors() {
     // `get` is untyped, so the raw string comes back unchanged
     assert_eq!(cfg.get("port").unwrap(), "notanumber");
 
+    cfg.delete_dir().unwrap();
+}
+
+/// Nested keys use `__`: `APP_DATABASE__PORT` → `database.port`, while a
+/// single underscore stays inside the key (`APP_API_KEY` → `api_key`).
+/// `get`, `get_as` and `load` all resolve the same variables.
+#[test]
+fn env_nested_double_underscore_mapping() {
+    #[derive(Deserialize, Debug, PartialEq)]
+    struct Database {
+        port: u16,
+        url: String,
+    }
+    #[derive(Deserialize, Debug, PartialEq)]
+    struct Tls {
+        mode: String,
+    }
+    #[derive(Deserialize, Debug, PartialEq)]
+    struct Server {
+        tls: Tls,
+    }
+    #[derive(Deserialize, Debug, PartialEq)]
+    struct Cfg {
+        port: u16,
+        api_key: String,
+        database: Database,
+        server: Server,
+    }
+
+    let prefix = unique_prefix("nestedmap");
+    let up = prefix.to_ascii_uppercase();
+    set_env(&format!("{up}_PORT"), "8080");
+    set_env(&format!("{up}_API_KEY"), "k");
+    set_env(&format!("{up}_DATABASE__PORT"), "5432");
+    set_env(&format!("{up}_DATABASE__URL"), "db.local");
+    set_env(&format!("{up}_SERVER__TLS__MODE"), "strict");
+
+    // no file at all — everything resolves from the environment
+    let cfg = unique_cfg("env_nestedmap").with_env_prefix(&prefix);
+
+    assert_eq!(cfg.get("database.port").unwrap(), "5432");
+    assert_eq!(cfg.get_as::<u16>("database.port").unwrap(), 5432);
+    assert_eq!(cfg.get_as::<String>("database.url").unwrap(), "db.local");
+    assert_eq!(cfg.get_as::<String>("server.tls.mode").unwrap(), "strict");
+    assert_eq!(cfg.get_as::<String>("api_key").unwrap(), "k");
+
+    let loaded: Cfg = cfg.load().unwrap().unwrap();
+    assert_eq!(
+        loaded,
+        Cfg {
+            port: 8080,
+            api_key: "k".to_string(),
+            database: Database {
+                port: 5432,
+                url: "db.local".to_string(),
+            },
+            server: Server {
+                tls: Tls {
+                    mode: "strict".to_string(),
+                },
+            },
+        }
+    );
+
+    cfg.delete_dir().unwrap();
+}
+
+/// A single underscore never nests: `APP_DATABASE_PORT` is the flat key
+/// `database_port`, invisible to `database.port`.
+#[test]
+fn env_single_underscore_never_nests() {
+    let prefix = unique_prefix("flatunder");
+    let up = prefix.to_ascii_uppercase();
+    set_env(&format!("{up}_DATABASE_PORT"), "1111");
+    set_env(&format!("{up}_MY_LONG_KEY"), "v");
+
+    let cfg = unique_cfg("env_flatunder").with_env_prefix(&prefix);
+
+    // flat keys with one or more underscores resolve as-is...
+    assert_eq!(cfg.get("database_port").unwrap(), "1111");
+    assert_eq!(cfg.get("my_long_key").unwrap(), "v");
+    // ...and never leak into the nested path
+    assert!(matches!(
+        cfg.get("database.port").unwrap_err(),
+        Error::NotFound
+    ));
+    assert!(matches!(
+        cfg.get_as::<u16>("database.port").unwrap_err(),
+        Error::NotFound
+    ));
+
+    cfg.delete_dir().unwrap();
+}
+
+/// Environment-only fields surface through `load()` with no file present.
+#[test]
+fn env_only_fields_load_without_file() {
+    #[derive(Deserialize, Debug, PartialEq)]
+    struct Cfg {
+        port: u16,
+        database: Db,
+    }
+    #[derive(Deserialize, Debug, PartialEq)]
+    struct Db {
+        host: String,
+    }
+
+    let prefix = unique_prefix("envonly");
+    let up = prefix.to_ascii_uppercase();
+    set_env(&format!("{up}_PORT"), "9000");
+    set_env(&format!("{up}_DATABASE__HOST"), "envdb");
+
+    let cfg = unique_cfg("env_only_load").with_env_prefix(&prefix);
+    assert!(!cfg.exists().unwrap());
+
+    let loaded: Cfg = cfg.load().unwrap().unwrap();
+    assert_eq!(
+        loaded,
+        Cfg {
+            port: 9000,
+            database: Db {
+                host: "envdb".to_string(),
+            },
+        }
+    );
+
+    cfg.delete_dir().unwrap();
+}
+
+/// `DotCfg` and `ConfigStack` read the same nested variable under one prefix.
+#[test]
+fn dotcfg_and_stack_share_env_convention() {
+    use dotcfg::ConfigStack;
+
+    let prefix = unique_prefix("sharedconv");
+    let up = prefix.to_ascii_uppercase();
+    set_env(&format!("{up}_DATABASE__PORT"), "7777");
+
+    let direct = unique_cfg("env_shared_direct").with_env_prefix(&prefix);
+    let missing = unique_cfg("env_shared_stack");
+    let _ = missing.delete_dir();
+    let stack = ConfigStack::new()
+        .layer("missing", missing)
+        .with_env_prefix(&prefix)
+        .build()
+        .unwrap();
+
+    assert_eq!(direct.get_as::<u16>("database.port").unwrap(), 7777);
+    assert_eq!(stack.get_as::<u16>("database.port").unwrap(), 7777);
+    assert_eq!(direct.get("database.port").unwrap(), "7777");
+    assert_eq!(stack.get("database.port").unwrap(), "7777");
+
+    direct.delete_dir().unwrap();
+}
+
+/// A non-Unicode override still reports `EnvNotUnicode` through every read.
+#[cfg(unix)]
+#[test]
+fn env_non_unicode_value_errors() {
+    use std::os::unix::ffi::OsStrExt;
+
+    let prefix = unique_prefix("nonunicode");
+    let var = format!("{}_PORT", prefix.to_ascii_uppercase());
+    unsafe { std::env::set_var(&var, std::ffi::OsStr::from_bytes(b"port-\xff-override")) };
+
+    let cfg = unique_cfg("env_nonunicode").with_env_prefix(&prefix);
+    assert!(matches!(
+        cfg.get("port").unwrap_err(),
+        Error::EnvNotUnicode(_)
+    ));
+    assert!(matches!(
+        cfg.get_as::<u16>("port").unwrap_err(),
+        Error::EnvNotUnicode(_)
+    ));
+
+    unsafe { std::env::remove_var(&var) };
     cfg.delete_dir().unwrap();
 }

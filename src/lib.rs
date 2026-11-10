@@ -124,24 +124,29 @@ pub struct DotCfg {
 
 /// The env var name `key` maps to under `prefix`, or `None` with no prefix.
 ///
-/// Direct [`DotCfg`] lookup only: `<PREFIX>_<KEY>`, uppercased, with `.`
-/// replaced by `_`. [`ConfigStack`](crate::ConfigStack) uses its own `__`
-/// nesting convention instead (see `stack_env_var`).
+/// `.` marks nesting and becomes `__`; a single `_` stays inside a key — so
+/// `port` → `<PREFIX>_PORT`, `api_key` → `<PREFIX>_API_KEY` and
+/// `database.port` → `<PREFIX>_DATABASE__PORT`. Shared by [`DotCfg`] and
+/// [`ConfigStack`](crate::ConfigStack) so both read the same variables.
 pub(crate) fn env_var_name(prefix: Option<&str>, key: &str) -> Option<String> {
     let prefix = prefix?;
-    Some(format!(
-        "{}_{}",
-        prefix.to_ascii_uppercase(),
-        key.replace('.', "_").to_ascii_uppercase()
-    ))
+    let suffix = key
+        .split('.')
+        .map(|segment| segment.to_ascii_uppercase())
+        .filter(|segment| !segment.is_empty())
+        .collect::<Vec<_>>()
+        .join("__");
+    if suffix.is_empty() {
+        return None;
+    }
+    Some(format!("{}_{}", prefix.to_ascii_uppercase(), suffix))
 }
 
 /// The environment override for `key`, as `(var name, raw value)`.
 ///
 /// `Ok(None)` means "no prefix configured, or the var is unset". A var that
-/// is set but unreadable is an error rather than a silent fallback. Direct
-/// [`DotCfg`] lookup only; [`ConfigStack`](crate::ConfigStack) resolves
-/// through its own `__` convention instead.
+/// is set but unreadable is an error rather than a silent fallback. Shared
+/// by [`DotCfg`] and [`ConfigStack`](crate::ConfigStack).
 pub(crate) fn env_override(
     prefix: Option<&str>,
     key: &str,
@@ -301,12 +306,12 @@ impl DotCfg {
     /// environment first and only fall back to the config file when the
     /// variable is unset. Opt-in: without this, the environment is never read.
     ///
-    /// A key maps to `<PREFIX>_<KEY>`, uppercased, with `.` replaced by `_`:
+    /// A key maps to `<PREFIX>_<KEY>`, uppercased, with `__` marking nesting:
     ///
     /// | key | env var (prefix `myapp`) |
     /// | :-- | :-- |
     /// | `port` | `MYAPP_PORT` |
-    /// | `user.name` | `MYAPP_USER_NAME` |
+    /// | `user.name` | `MYAPP_USER__NAME` |
     ///
     /// ```rust,no_run
     /// # use dotcfg::DotCfg;
@@ -419,8 +424,15 @@ impl DotCfg {
 
     /// Load the config file.
     ///
-    /// Returns `None` if the file doesn't exist — no auto-create.
+    /// Returns `None` if the file doesn't exist — no auto-create — unless
+    /// [`Self::with_env_prefix`] is set and a matching environment variable
+    /// exists, in which case the env-overlaid configuration is returned.
     /// Use [`Self::load_or_default`] if you want auto-create behavior.
+    ///
+    /// With a prefix configured, matching `PREFIX_*` variables overlay the
+    /// file (or stand alone when no file exists) using the same `__`
+    /// nesting rule as [`Self::get_as`]: `APP_DATABASE__PORT` overrides
+    /// `database.port`, while a single `_` stays inside a key.
     ///
     /// A file that exists but holds no values (empty, whitespace only, or an
     /// empty document) is deserialized as an empty config, so it succeeds only
@@ -430,9 +442,22 @@ impl DotCfg {
     where
         T: for<'de> Deserialize<'de>,
     {
-        match self.read_tree()? {
-            Some(tree) => value::from_value(tree).map(Some),
-            None => Ok(None),
+        let tree = self.read_tree()?;
+        let env = if self.env_prefix.is_some() {
+            crate::stack::discover_env(self.env_prefix.as_deref())
+        } else {
+            Vec::new()
+        };
+        match (tree, env.is_empty()) {
+            (None, true) => Ok(None),
+            (tree, _) => {
+                let tree = tree.unwrap_or_else(value::empty);
+                if env.is_empty() {
+                    value::from_value(tree).map(Some)
+                } else {
+                    crate::stack::load_overlay(tree, env).map(Some)
+                }
+            }
         }
     }
 
@@ -468,18 +493,8 @@ impl DotCfg {
     /// Creates the config directory if it doesn't exist.
     pub fn save<T: Serialize>(&self, config: &T) -> Result<(), Error> {
         self.ensure_dir()?;
-        let path = self.file_path()?;
-
-        let content = match self.format {
-            #[cfg(feature = "toml")]
-            Format::Toml => toml::to_string_pretty(config)?,
-            #[cfg(feature = "json")]
-            Format::Json => serde_json::to_string_pretty(config)?,
-            #[cfg(feature = "yaml")]
-            Format::Yaml => serde_yaml_ng::to_string(config)?,
-        };
-
-        fs::write(&path, content)?;
+        let content = value::serialize_config(&self.format, config)?;
+        fs::write(self.file_path()?, content)?;
         Ok(())
     }
 
@@ -603,6 +618,214 @@ impl DotCfg {
         }
         Ok(())
     }
+
+    #[cfg(feature = "async")]
+    async fn ensure_dir_async(&self) -> Result<(), Error> {
+        let dir = self.dir()?;
+        if !tokio::fs::try_exists(&dir).await? {
+            tokio::fs::create_dir_all(&dir).await?;
+        }
+        Ok(())
+    }
+
+    #[cfg(feature = "async")]
+    async fn read_tree_async(&self) -> Result<Option<Value>, Error> {
+        let path = self.file_path()?;
+        if !tokio::fs::try_exists(&path).await? {
+            return Ok(None);
+        }
+        let content = tokio::fs::read_to_string(path).await?;
+        value::parse(&self.format, &content).map(Some)
+    }
+
+    #[cfg(feature = "async")]
+    async fn read_tree_or_empty_async(&self) -> Result<Value, Error> {
+        Ok(self.read_tree_async().await?.unwrap_or_else(value::empty))
+    }
+
+    #[cfg(feature = "async")]
+    async fn write_tree_async(&self, tree: &Value) -> Result<(), Error> {
+        let content = value::render(&self.format, tree)?;
+        self.ensure_dir_async().await?;
+        tokio::fs::write(self.file_path()?, content).await?;
+        Ok(())
+    }
+
+    /// Load the config file asynchronously using Tokio filesystem I/O.
+    ///
+    /// Returns None when the file does not exist, unless configured environment
+    /// overrides provide values. Parsing and value handling use the same internal
+    /// representation as the synchronous API.
+    #[cfg(feature = "async")]
+    pub async fn load_async<T>(&self) -> Result<Option<T>, Error>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        let tree = self.read_tree_async().await?;
+        let env = if self.env_prefix.is_some() {
+            crate::stack::discover_env(self.env_prefix.as_deref())
+        } else {
+            Vec::new()
+        };
+        match (tree, env.is_empty()) {
+            (None, true) => Ok(None),
+            (tree, _) => {
+                let tree = tree.unwrap_or_else(value::empty);
+                if env.is_empty() {
+                    value::from_value(tree).map(Some)
+                } else {
+                    crate::stack::load_overlay(tree, env).map(Some)
+                }
+            }
+        }
+    }
+
+    /// Load the config asynchronously or return Error::NotFound.
+    #[cfg(feature = "async")]
+    pub async fn load_or_error_async<T>(&self) -> Result<T, Error>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        self.load_async().await?.ok_or(Error::NotFound)
+    }
+
+    /// Load the config asynchronously, writing default values when missing.
+    #[cfg(feature = "async")]
+    pub async fn load_or_default_async<T>(&self) -> Result<T, Error>
+    where
+        T: serde::de::DeserializeOwned + Serialize + Default,
+    {
+        match self.load_async().await? {
+            Some(config) => Ok(config),
+            None => {
+                let default = T::default();
+                self.save_async(&default).await?;
+                Ok(default)
+            }
+        }
+    }
+
+    /// Save a config value asynchronously.
+    #[cfg(feature = "async")]
+    pub async fn save_async<T: Serialize>(&self, config: &T) -> Result<(), Error> {
+        self.ensure_dir_async().await?;
+        let content = value::serialize_config(&self.format, config)?;
+        tokio::fs::write(self.file_path()?, content).await?;
+        Ok(())
+    }
+
+    /// Get a key as a string asynchronously, honoring configured env overrides.
+    #[cfg(feature = "async")]
+    pub async fn get_async(&self, key: &str) -> Result<String, Error> {
+        if let Some((_, raw)) = self.env_override(key)? {
+            return Ok(raw);
+        }
+        let tree = self.read_tree_async().await?.ok_or(Error::NotFound)?;
+        Ok(value::display(&self.format, value::get_node(&tree, key)?))
+    }
+
+    /// Set a string value asynchronously, preserving all other keys.
+    #[cfg(feature = "async")]
+    pub async fn set_async(&self, key: &str, raw: &str) -> Result<(), Error> {
+        self.set_node_async(key, Value::String(raw.to_string()))
+            .await
+    }
+
+    #[cfg(feature = "async")]
+    async fn set_node_async(&self, key: &str, new_value: Value) -> Result<(), Error> {
+        let mut tree = self.read_tree_or_empty_async().await?;
+        value::set_node(&mut tree, key, new_value)?;
+        self.write_tree_async(&tree).await
+    }
+
+    /// Get a key as a typed value asynchronously.
+    #[cfg(feature = "async")]
+    pub async fn get_as_async<T: serde::de::DeserializeOwned>(
+        &self,
+        key: &str,
+    ) -> Result<T, Error> {
+        if let Some((var, raw)) = self.env_override(key)? {
+            return env::from_env_str(&var, &raw);
+        }
+        let tree = self.read_tree_async().await?.ok_or(Error::NotFound)?;
+        value::from_value(value::get_node(&tree, key)?.clone())
+    }
+
+    /// Set a typed value asynchronously, preserving all other keys.
+    #[cfg(feature = "async")]
+    pub async fn set_val_async<T: Serialize>(&self, key: &str, new_value: T) -> Result<(), Error> {
+        self.set_node_async(key, value::to_value(new_value)?).await
+    }
+
+    /// Search parent directories for this config file asynchronously.
+    #[cfg(feature = "async")]
+    pub async fn find_in_ancestors_async(self) -> Result<Option<Self>, Error> {
+        let cwd = std::env::current_dir().map_err(Error::Io)?;
+        self.find_in_ancestors_from_async(cwd).await
+    }
+
+    /// Search parent directories for this config file from an explicit path.
+    #[cfg(feature = "async")]
+    pub async fn find_in_ancestors_from_async(
+        self,
+        start: impl AsRef<Path>,
+    ) -> Result<Option<Self>, Error> {
+        let ext = match &self.format {
+            #[cfg(feature = "toml")]
+            Format::Toml => "toml",
+            #[cfg(feature = "json")]
+            Format::Json => "json",
+            #[cfg(feature = "yaml")]
+            Format::Yaml => "yaml",
+        };
+        let file_name = format!("{}.{}", self.filename, ext);
+        let dot_dir = format!(".{}", self.app_name);
+        for ancestor in start.as_ref().ancestors() {
+            let dir = ancestor.join(&dot_dir);
+            let file = dir.join(&file_name);
+            match tokio::fs::metadata(&file).await {
+                Ok(metadata) if metadata.is_file() => {
+                    return Ok(Some(Self {
+                        app_name: self.app_name,
+                        strategy: DirStrategy::Custom(dir),
+                        format: self.format,
+                        filename: self.filename,
+                        env_prefix: self.env_prefix,
+                    }));
+                }
+                Ok(_) => {}
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => return Err(Error::Io(error)),
+            }
+        }
+        Ok(None)
+    }
+
+    /// Returns whether the config file exists asynchronously.
+    #[cfg(feature = "async")]
+    pub async fn exists_async(&self) -> Result<bool, Error> {
+        Ok(tokio::fs::try_exists(self.file_path()?).await?)
+    }
+
+    /// Delete the config file asynchronously, leaving its directory in place.
+    #[cfg(feature = "async")]
+    pub async fn delete_file_async(&self) -> Result<(), Error> {
+        let path = self.file_path()?;
+        if tokio::fs::try_exists(&path).await? {
+            tokio::fs::remove_file(path).await?;
+        }
+        Ok(())
+    }
+
+    /// Delete the config directory and its contents asynchronously.
+    #[cfg(feature = "async")]
+    pub async fn delete_dir_async(&self) -> Result<(), Error> {
+        let dir = self.dir()?;
+        if tokio::fs::try_exists(&dir).await? {
+            tokio::fs::remove_dir_all(dir).await?;
+        }
+        Ok(())
+    }
 }
 
 // Unit tests for private helpers
@@ -627,10 +850,24 @@ mod unit_tests {
     fn env_var_name_mapping() {
         // flat key
         assert_eq!(env_var_name(Some("myapp"), "port").unwrap(), "MYAPP_PORT");
-        // nested key — dots become underscores
+        // nested key — dots become double underscores
         assert_eq!(
             env_var_name(Some("myapp"), "user.name").unwrap(),
-            "MYAPP_USER_NAME"
+            "MYAPP_USER__NAME"
+        );
+        // flat keys with underscores stay flat — never nesting
+        assert_eq!(
+            env_var_name(Some("myapp"), "api_key").unwrap(),
+            "MYAPP_API_KEY"
+        );
+        assert_eq!(
+            env_var_name(Some("myapp"), "my_long_key").unwrap(),
+            "MYAPP_MY_LONG_KEY"
+        );
+        // multiple levels of nesting
+        assert_eq!(
+            env_var_name(Some("myapp"), "server.tls.mode").unwrap(),
+            "MYAPP_SERVER__TLS__MODE"
         );
         // already-uppercase input is left alone
         assert_eq!(env_var_name(Some("myapp"), "PORT").unwrap(), "MYAPP_PORT");
@@ -689,7 +926,7 @@ mod unit_tests {
         set_env(&format!("{up}_PORT"), "9000");
         set_env(&format!("{up}_DEBUG"), "true");
         set_env(&format!("{up}_PLUGINS"), "fmt,lint");
-        set_env(&format!("{up}_FEATURES_AUTO_UPDATE"), "false");
+        set_env(&format!("{up}_FEATURES__AUTO_UPDATE"), "false");
         set_env(&format!("{up}_BAD"), "notanumber");
 
         let cfg = DotCfg::new("dotcfg_no_such_app").with_env_prefix(&prefix);

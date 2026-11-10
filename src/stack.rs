@@ -35,7 +35,7 @@ use serde::{Deserializer, Serialize};
 
 use crate::env::EnvStr;
 use crate::value::Value;
-use crate::{DotCfg, Error, env, value};
+use crate::{DotCfg, Error, env, env_override, value};
 
 /// Layered configuration over named [`DotCfg`] sources.
 ///
@@ -45,7 +45,7 @@ use crate::{DotCfg, Error, env, value};
 /// [`Error::NoWriteTarget`] rather than guessing a target).
 ///
 /// Reads resolve low → high precedence with environment on top; see the
-/// [module](self) docs. Every method takes `&self`: resolution re-reads
+/// module-level docs. Every method takes `&self`: resolution re-reads
 /// the sources on each call, so concurrent edits on disk are picked up.
 pub struct ConfigStack {
     layers: Vec<(String, DotCfg)>,
@@ -116,6 +116,20 @@ impl ConfigStack {
         Ok((tree, any_file))
     }
 
+    /// Merged file trees, low → high precedence, read with Tokio.
+    #[cfg(feature = "async")]
+    async fn merged_tree_async(&self) -> Result<(Value, bool), Error> {
+        let mut tree = value::empty();
+        let mut any_file = false;
+        for (_, cfg) in &self.layers {
+            if let Some(file_tree) = cfg.read_tree_async().await? {
+                any_file = true;
+                value::merge(&mut tree, file_tree);
+            }
+        }
+        Ok((tree, any_file))
+    }
+
     /// `(path segments, var name, raw value)` for every `PREFIX_*` variable.
     ///
     /// `__` splits nesting, a single `_` stays inside a key, empty segments
@@ -125,39 +139,22 @@ impl ConfigStack {
     /// non-unicode values stay staged and fail lazily with
     /// [`Error::EnvNotUnicode`] when read, exactly like direct lookups.
     fn discover(&self) -> Vec<(Vec<String>, String, OsString)> {
-        let Some(prefix) = self
-            .env_prefix
-            .as_ref()
-            .map(|prefix| prefix.to_ascii_uppercase())
-        else {
-            return Vec::new();
-        };
-        let stem = format!("{prefix}_");
-        let mut out = Vec::new();
-        for (name, val) in std::env::vars_os() {
-            let Some(name) = name.to_str() else {
-                continue;
-            };
-            let Some(suffix) = name.strip_prefix(&stem) else {
-                continue;
-            };
-            let path: Vec<String> = suffix
-                .split("__")
-                .map(|segment| segment.to_ascii_lowercase())
-                .filter(|segment| !segment.is_empty())
-                .collect();
-            if path.is_empty() {
-                continue;
-            }
-            out.push((path, name.to_owned(), val));
-        }
-        out
+        discover_env(self.env_prefix.as_deref())
     }
 
     /// Merged tree plus discovered env entries, and whether anything at all
     /// was found (any file, or any matching env var).
     fn resolve(&self) -> Result<(Overlay, bool), Error> {
         let (tree, any_file) = self.merged_tree()?;
+        let env = self.discover();
+        let any_source = any_file || !env.is_empty();
+        Ok((Overlay { tree, env }, any_source))
+    }
+
+    /// Async counterpart of [`Self::resolve`], using Tokio for file reads.
+    #[cfg(feature = "async")]
+    async fn resolve_async(&self) -> Result<(Overlay, bool), Error> {
+        let (tree, any_file) = self.merged_tree_async().await?;
         let env = self.discover();
         let any_source = any_file || !env.is_empty();
         Ok((Overlay { tree, env }, any_source))
@@ -171,7 +168,7 @@ impl ConfigStack {
     /// canonical form (scalars raw, arrays and maps compact JSON), never in
     /// a supplier's format.
     pub fn get(&self, key: &str) -> Result<String, Error> {
-        if let Some((_, raw)) = stack_env_override(self.env_prefix.as_deref(), key)? {
+        if let Some((_, raw)) = env_override(self.env_prefix.as_deref(), key)? {
             return Ok(raw);
         }
         let (tree, any_file) = self.merged_tree()?;
@@ -187,10 +184,42 @@ impl ConfigStack {
     /// looked up with the stack `__` convention; otherwise the merged-tree
     /// node deserializes directly.
     pub fn get_as<T: DeserializeOwned>(&self, key: &str) -> Result<T, Error> {
-        if let Some((var, raw)) = stack_env_override(self.env_prefix.as_deref(), key)? {
+        if let Some((var, raw)) = env_override(self.env_prefix.as_deref(), key)? {
             return env::from_env_str(&var, &raw);
         }
         let (tree, any_file) = self.merged_tree()?;
+        if !any_file {
+            return Err(Error::NotFound);
+        }
+        value::from_value(value::get_node(&tree, key)?.clone())
+    }
+
+    /// Read one value as a string with Tokio filesystem I/O.
+    ///
+    /// Behaves exactly like [`Self::get`]: a matching environment variable
+    /// wins, and the merged tree renders in the canonical form.
+    #[cfg(feature = "async")]
+    pub async fn get_async(&self, key: &str) -> Result<String, Error> {
+        if let Some((_, raw)) = env_override(self.env_prefix.as_deref(), key)? {
+            return Ok(raw);
+        }
+        let (tree, any_file) = self.merged_tree_async().await?;
+        if !any_file {
+            return Err(Error::NotFound);
+        }
+        value::get_node(&tree, key).map(value::display_canonical)
+    }
+
+    /// Read one value deserialized into `T` with Tokio filesystem I/O.
+    ///
+    /// Behaves exactly like [`Self::get_as`], including typed environment
+    /// parsing and the `__` lookup convention.
+    #[cfg(feature = "async")]
+    pub async fn get_as_async<T: DeserializeOwned>(&self, key: &str) -> Result<T, Error> {
+        if let Some((var, raw)) = env_override(self.env_prefix.as_deref(), key)? {
+            return env::from_env_str(&var, &raw);
+        }
+        let (tree, any_file) = self.merged_tree_async().await?;
         if !any_file {
             return Err(Error::NotFound);
         }
@@ -202,22 +231,38 @@ impl ConfigStack {
     /// File trees merge low → high, then environment applies on top with one
     /// shared definition of "resolved": `None` only when no source file
     /// exists and no matching env var is set. Env-only keys participate via
-    /// the `__` discovery rule documented on [`Self::discover`].
+    /// the `__` discovery rule (`APP_X__Y` → `x.y`).
     pub fn load<T: DeserializeOwned>(&self) -> Result<Option<T>, Error> {
         let (overlay, any_source) = self.resolve()?;
         if !any_source {
             return Ok(None);
         }
-        T::deserialize(Cursor {
-            node: overlay.node_at(&[])?,
-        })
-        .map(Some)
+        load_overlay(overlay.tree, overlay.env).map(Some)
     }
 
     /// Load the resolved configuration, or [`Error::NotFound`] when nothing
     /// is configured anywhere.
     pub fn load_or_error<T: DeserializeOwned>(&self) -> Result<T, Error> {
         self.load()?.ok_or(Error::NotFound)
+    }
+
+    /// Load the resolved configuration with Tokio filesystem I/O.
+    ///
+    /// Uses the same merge and environment rules as [`Self::load`], so the
+    /// async and sync paths return the same values for the same files.
+    #[cfg(feature = "async")]
+    pub async fn load_async<T: DeserializeOwned>(&self) -> Result<Option<T>, Error> {
+        let (overlay, any_source) = self.resolve_async().await?;
+        if !any_source {
+            return Ok(None);
+        }
+        load_overlay(overlay.tree, overlay.env).map(Some)
+    }
+
+    /// Async counterpart of [`Self::load_or_error`].
+    #[cfg(feature = "async")]
+    pub async fn load_or_error_async<T: DeserializeOwned>(&self) -> Result<T, Error> {
+        self.load_async().await?.ok_or(Error::NotFound)
     }
 
     /// The writable source, or [`Error::NoWriteTarget`] when the stack is
@@ -253,6 +298,33 @@ impl ConfigStack {
     /// into the target.
     pub fn save<T: Serialize>(&self, config: &T) -> Result<(), Error> {
         self.writer()?.save(config)
+    }
+
+    /// Set one key to a string in the writable source, using Tokio.
+    ///
+    /// Same target rules as [`Self::set`]: only the selected source is
+    /// touched, and read-only stacks report [`Error::NoWriteTarget`].
+    #[cfg(feature = "async")]
+    pub async fn set_async(&self, key: &str, val: &str) -> Result<(), Error> {
+        self.writer()?.set_async(key, val).await
+    }
+
+    /// Set one key to a typed value in the writable source, using Tokio.
+    ///
+    /// Same target rules as [`Self::set_val`].
+    #[cfg(feature = "async")]
+    pub async fn set_val_async<T: Serialize>(&self, key: &str, val: T) -> Result<(), Error> {
+        self.writer()?.set_val_async(key, val).await
+    }
+
+    /// Save a whole struct to the writable source with Tokio filesystem I/O.
+    ///
+    /// Like [`Self::save`], this writes the value given rather than the
+    /// resolved view, so lower layers and env overrides are never flattened
+    /// into the target.
+    #[cfg(feature = "async")]
+    pub async fn save_async<T: Serialize>(&self, config: &T) -> Result<(), Error> {
+        self.writer()?.save_async(config).await
     }
 
     /// Direct access to one named source, bypassing resolution. The source's
@@ -357,38 +429,49 @@ impl Overlay {
     }
 }
 
-/// The env var name `key` maps to under the stack convention: `.` becomes
-/// `__`, everything uppercased, a single `_` stays inside a key. So
-/// `database.port` → `PREFIX_DATABASE__PORT` and `api_key` →
-/// `PREFIX_API_KEY`. Unlike direct [`DotCfg`] lookup (single `_`), this
-/// inverts safely, so [`ConfigStack::load`] discovers exactly what
-/// [`ConfigStack::get`] and [`ConfigStack::get_as`] read.
-fn stack_env_var(prefix: Option<&str>, key: &str) -> Option<String> {
-    let prefix = prefix?;
-    let suffix = key
-        .split('.')
-        .map(|segment| segment.to_ascii_uppercase())
-        .filter(|segment| !segment.is_empty())
-        .collect::<Vec<_>>()
-        .join("__");
-    if suffix.is_empty() {
-        return None;
+/// Discovered `PREFIX_*` variables for one prefix: `(path, var, raw)`.
+///
+/// Shared discovery behind [`ConfigStack`] and [`DotCfg`](crate::DotCfg)
+/// env overlays so both observe the same variables under one convention.
+pub(crate) fn discover_env(prefix: Option<&str>) -> Vec<(Vec<String>, String, OsString)> {
+    let Some(prefix) = prefix.map(|prefix| prefix.to_ascii_uppercase()) else {
+        return Vec::new();
+    };
+    let stem = format!("{prefix}_");
+    let mut out = Vec::new();
+    for (name, val) in std::env::vars_os() {
+        let Some(name) = name.to_str() else {
+            continue;
+        };
+        let Some(suffix) = name.strip_prefix(&stem) else {
+            continue;
+        };
+        let path: Vec<String> = suffix
+            .split("__")
+            .map(|segment| segment.to_ascii_lowercase())
+            .filter(|segment| !segment.is_empty())
+            .collect();
+        if path.is_empty() {
+            continue;
+        }
+        out.push((path, name.to_owned(), val));
     }
-    Some(format!("{}_{}", prefix.to_ascii_uppercase(), suffix))
+    out
 }
 
-/// The environment override for `key` under the stack convention, as
-/// `(var name, raw value)`. Same contract as the direct lookup: unset falls
-/// through, unreadable is an error.
-fn stack_env_override(prefix: Option<&str>, key: &str) -> Result<Option<(String, String)>, Error> {
-    let Some(var) = stack_env_var(prefix, key) else {
-        return Ok(None);
-    };
-    match std::env::var(&var) {
-        Ok(raw) => Ok(Some((var, raw))),
-        Err(std::env::VarError::NotPresent) => Ok(None),
-        Err(std::env::VarError::NotUnicode(_)) => Err(Error::EnvNotUnicode(var)),
-    }
+/// Deserialize `T` from a file `tree` with discovered env entries overlaid.
+///
+/// Shared by [`ConfigStack::load`](ConfigStack::load) and
+/// [`DotCfg::load`](crate::DotCfg::load): an empty `env` behaves exactly
+/// like a single-file read.
+pub(crate) fn load_overlay<T: DeserializeOwned>(
+    tree: Value,
+    env: Vec<(Vec<String>, String, OsString)>,
+) -> Result<T, Error> {
+    let overlay = Overlay { tree, env };
+    T::deserialize(Cursor {
+        node: overlay.node_at(&[])?,
+    })
 }
 
 /// Display form of a path for errors: dotted, or `<root>`.

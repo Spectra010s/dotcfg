@@ -305,6 +305,12 @@ For the generated Rust API reference, see **https://docs.rs/dotcfg**.
 | `toml`  | ✅      | TOML format support |
 | `json`  | ❌      | JSON format support |
 | `yaml`  | ❌      | YAML format support |
+| `async` | ❌      | Optional async filesystem I/O via Tokio |
+
+With the `async` feature, `ConfigStack` provides `get_async`, `get_as_async`,
+`load_async`, `load_or_error_async`, `set_async`, `set_val_async`, and
+`save_async`. Async reads keep the same layer and environment precedence as
+sync reads. Async writes use only the source selected by `write_to`.
 
 ## License
 
