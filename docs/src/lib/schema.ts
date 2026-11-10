@@ -1,4 +1,4 @@
-const siteUrl = 'https://dotcfg.pxxl.click';
+const siteUrl = 'https://dotcfg.spectra010s.com';
 
 export const creator = {
   '@type': 'Person',

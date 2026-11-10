@@ -233,7 +233,7 @@ Writes never flatten the resolved view. `set`, `set_val`, and `save` go only to 
 
 Environment overrides use the same naming rule in `DotCfg` and `ConfigStack`: a single underscore stays inside a key and `__` marks nesting. `APP_API_KEY` → `api_key`, `APP_DATABASE__PORT` → `database.port`.
 
-See the [layered configuration guide](https://dotcfg.pxxl.click/config-stack) for merge, write-target, environment, and source-access behavior.
+See the [layered configuration guide](https://dotcfg.spectra010s.com/config-stack) for merge, write-target, environment, and source-access behavior.
 
 ## Errors
 
@@ -294,7 +294,7 @@ cfg.delete_dir()?;  // delete entire dir
 
 ## Documentation
 
-The full guides and examples are available at **https://dotcfg.pxxl.click**.
+The full guides and examples are available at **https://dotcfg.spectra010s.com**.
 
 For the generated Rust API reference, see **https://docs.rs/dotcfg**.
 

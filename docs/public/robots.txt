@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://dotcfg.pxxl.click/sitemap-index.xml
+Sitemap: https://dotcfg.spectra010s.com/sitemap-index.xml
