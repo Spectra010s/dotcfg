@@ -1,7 +1,7 @@
 ---
 title: 'Introducing ConfigStack: Layered Configuration in dotcfg'
-description: 'Layer multiple configuration sources with predictable precedence, deep merging, explicit writes, and environment overrides.'
-publishedAt: 2026-10-16
+description: 'When one config file is not enough, combine defaults, project settings, and environment overrides while keeping writes in the right place.'
+publishedAt: 2026-11-10
 tags:
   - rust
   - configuration
@@ -9,310 +9,80 @@ tags:
   - configstack
 ---
 
-A single configuration file is enough for a lot of applications.
+Say you build a CLI with one config file. `DotCfg` handles it: load the file, read a key, save a change. Then you want defaults that ship with the app, settings that belong to each project, and an environment variable that can override a value during deployment. You now have three places to look for the same setting.
 
-Sometimes it isn't.
+Which value should the app use? And if someone changes it, which file should receive the write?
 
-An application might ship with defaults, have configuration specific to a project or machine, and use environment variables for deployment-specific values. Once configuration starts coming from more than one place, loading a file is no longer the difficult part.
+dotcfg v0.4.0 introduces `ConfigStack` to answer those questions. It combines named `DotCfg` sources in a defined order and lets you choose one source for writes.
 
-The difficult part is deciding how those sources work together.
+## A project on top of defaults
 
-dotcfg now has `ConfigStack` for exactly that.
+Imagine a defaults file containing:
 
-## From one source to many
+```toml
+[server]
+host = "127.0.0.1"
+port = 3000
 
-`DotCfg` represents a single configuration source.
+[logging]
+level = "info"
 
-For example:
-
-```rust
-let cfg = DotCfg::new("myapp");
-let config: AppConfig = cfg.load_or_default()?;
+[features]
+enabled = ["search", "exports"]
 ```
 
-That remains the simplest way to use dotcfg, and it isn't going away.
+A project needs a different port and a smaller feature list:
 
-`ConfigStack` is for applications that need multiple configuration sources with predictable precedence between them.
+```toml
+[server]
+port = 8080
 
-A stack can look roughly like this:
+[features]
+enabled = ["search"]
+```
+
+You can put those files in a stack, with the project after the defaults:
 
 ```rust
+use dotcfg::{ConfigStack, DotCfg};
+
+let defaults = DotCfg::new("myapp").at_dir("./config/defaults");
+let project = DotCfg::new("myapp").at_dir("./config/project");
+
 let config = ConfigStack::new()
     .layer("defaults", defaults)
     .layer("project", project)
     .write_to("project")
     .with_env_prefix("APP")
     .build()?;
-```
 
-Each layer has a name and a position in the stack.
-
-Later layers override earlier ones, and environment variables sit above the configured layers when an environment prefix is enabled.
-
-Conceptually:
-
-```text
-defaults
-    ↓
-project
-    ↓
-environment
-```
-
-The resolved configuration is the result of applying those sources in order.
-
-## Later layers win
-
-Suppose the first layer contains:
-
-```toml
-[server]
-host = "localhost"
-port = 3000
-
-[logging]
-level = "info"
-```
-
-and a later layer contains:
-
-```toml
-[server]
-port = 8080
-```
-
-The resolved configuration becomes:
-
-```toml
-[server]
-host = "localhost"
-port = 8080
-
-[logging]
-level = "info"
-```
-
-`server.port` comes from the later layer, while the other values remain available from the earlier one.
-
-This is where layering becomes slightly more interesting than simply loading several files in sequence.
-
-## Maps deep-merge, arrays replace
-
-When two layers contain maps, `ConfigStack` merges them recursively.
-
-Given:
-
-```toml
-# defaults
-
-[server]
-host = "localhost"
-port = 3000
-
-[server.tls]
-enabled = false
-```
-
-and:
-
-```toml
-# project
-
-[server]
-port = 8080
-
-[server.tls]
-enabled = true
-```
-
-the later values override only the corresponding values in the earlier map.
-
-Arrays deliberately behave differently.
-
-If a later layer contains an array at the same path as an earlier layer, the later array replaces it.
-
-`ConfigStack` doesn't try to guess whether arrays should be appended, deduplicated, merged by position, or combined using some application-specific rule.
-
-The rule is intentionally predictable:
-
-**Maps deep-merge. Arrays replace. Later values win.**
-
-## Reading the resolved configuration
-
-Once built, a stack can be read much like the rest of dotcfg.
-
-Individual values can be accessed with `get()`:
-
-```rust
-let port = config.get("server.port")?;
-```
-
-Values can be converted to a requested type with `get_as()`:
-
-```rust
 let port: u16 = config.get_as("server.port")?;
 ```
 
-And the resolved configuration can be deserialized into a Rust type with `load_or_error()` when configuration is required:
+The read returns `8080`. The project overrides `server.port`, while `server.host` and `logging.level` still come from the defaults. Nested maps merge; the later `features.enabled` array replaces the earlier one, so the resolved list contains only `"search"`.
+
+Now set `APP_SERVER__PORT=9000`. The same read returns `9000`, because matching environment variables sit above the file layers. The double underscore marks a nested key; a single underscore stays inside a key, so `APP_API_KEY` maps to `api_key`. The order tells you which value wins.
+
+## Reading from many places, writing to one
+
+The stack can resolve several sources, but a write needs an owner. In the example, `write_to("project")` names it:
 
 ```rust
-let app_config: AppConfig = config.load_or_error()?;
+config.set_val("server.port", 8081u16)?;
 ```
 
-The caller doesn't need to manually inspect every layer to determine where each value came from.
+That changes the project file only. The defaults remain untouched. If `APP_SERVER__PORT` is still set, a new read still sees its value of `9000`; the environment override is not copied into the file. `save()` also writes only the value you pass to the project source, not the merged result. Without `write_to()`, stack writes return `Error::NoWriteTarget`.
 
-Resolution happens across the stack first.
-
-## Writing is explicit
-
-Reading from multiple sources raises an important question:
-
-**Where should a write go?**
-
-Consider a stack containing `defaults` and `project`.
-
-If you run:
+Sometimes you want to inspect a file on its own. The source name gives you its `DotCfg` directly:
 
 ```rust
-config.set("server.port", 9000)?;
+let project_port: u16 = config.source("project")?.get_as("server.port")?;
 ```
 
-dotcfg shouldn't silently guess whether that belongs in the defaults or the project configuration.
+That read skips stack resolution, so it sees the project's value even when an environment override wins in the combined view.
 
-A stack therefore needs an explicit write target before resolved writes are allowed:
+## When a source is missing
 
-```rust
-let config = ConfigStack::new()
-    .layer("defaults", defaults)
-    .layer("project", project)
-    .write_to("project")
-    .build()?;
-```
+A project does not have to create a config file before it can use the defaults. Missing files are skipped. `ConfigStack::load()` returns `None` only if every file is missing and no matching environment variable exists. If a file exists but is empty, it still counts as a source and must deserialize into the type you requested. A malformed file is an error, even when another layer has valid values.
 
-Now writes have a clear owner.
-
-If no write target is configured, the stack remains read-only.
-
-This keeps two separate ideas separate:
-
-- values may be **read from many sources**
-- changes are **written to one explicitly selected source**
-
-## Layers are still individually accessible
-
-Using a stack doesn't hide the underlying configuration sources.
-
-A named source can be accessed directly:
-
-```rust
-config.source("project")
-```
-
-This is useful when the application intentionally wants to work with one layer rather than the fully resolved configuration.
-
-The stack provides a combined view, but each source still has its own identity.
-
-Source names also make configuration mistakes explicit. Duplicate names, references to unknown sources, and attempts to perform resolved writes without a write target are reported as errors instead of being silently resolved.
-
-## Environment variables belong at the top
-
-Environment overrides can be added with a prefix:
-
-```rust
-let config = ConfigStack::new()
-    .layer("defaults", defaults)
-    .layer("project", project)
-    .with_env_prefix("APP")
-    .build()?;
-```
-
-Environment values have the highest precedence.
-
-There is also one important naming rule.
-
-A single underscore is part of a configuration key, while a double underscore represents nesting:
-
-```text
-APP_PORT              → port
-APP_API_KEY           → api_key
-APP_DATABASE__PORT    → database.port
-APP_SERVER__TLS__MODE → server.tls.mode
-```
-
-This distinction matters because an environment variable such as:
-
-```text
-APP_DATABASE_PORT
-```
-
-cannot otherwise tell us whether the intended key is `database_port` or `database.port`.
-
-With the current convention, it unambiguously means:
-
-```text
-database_port
-```
-
-while:
-
-```text
-APP_DATABASE__PORT
-```
-
-means:
-
-```text
-database.port
-```
-
-The same convention is used by both `DotCfg` and `ConfigStack`.
-
-## What about missing or empty layers?
-
-Not every source in a stack needs to contain configuration.
-
-A missing optional source doesn't need to make the entire stack unusable, and an empty configuration is different from malformed configuration.
-
-That distinction matters when configuration comes from multiple places.
-
-A source that contributes no values simply has nothing to add to the resolved configuration.
-
-A malformed source, however, is still an error.
-
-Layering shouldn't turn invalid configuration into something that is silently ignored.
-
-## Why ConfigStack is separate from DotCfg
-
-`ConfigStack` could have been folded into `DotCfg`, but doing that would make the basic API responsible for concepts that many applications don't need.
-
-If an application has one configuration source, this is still enough:
-
-```rust
-let cfg = DotCfg::new("myapp");
-```
-
-There is no need to create a stack just to read one file.
-
-`DotCfg` remains the single-source configuration API.
-
-`ConfigStack` composes multiple sources when the application needs precedence, merging and explicit write ownership.
-
-That keeps the simple case simple without limiting applications that eventually need more.
-
-## A foundation for more flexible configuration
-
-Layered configuration changes what dotcfg can represent.
-
-A CLI can combine defaults with project-specific configuration.
-
-A desktop application can keep application defaults separate from user-controlled values.
-
-A server can resolve file-backed configuration and then let deployment environment variables override specific values.
-
-And applications that only need one configuration file can continue using `DotCfg` exactly for that job.
-
-`ConfigStack` isn't intended to replace `DotCfg`.
-
-It fills the space that appears when configuration stops coming from one place.
-
-For Tokio-based file operations on a stack, see the [async ConfigStack guide](/async-io/config-stack). The layering rules are the same.
+If your app has only one config file, keep using `DotCfg`. Use `ConfigStack` when values need to come from several places and you need clear precedence and a deliberate write target. For the full method behavior, see the [ConfigStack guides](/config-stack) and, if your app uses Tokio, the [async ConfigStack guide](/async-io/config-stack).
