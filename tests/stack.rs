@@ -334,6 +334,176 @@ macro_rules! stack_suite {
                 assert_eq!(back, saved);
                 let _ = std::fs::remove_dir_all(dir);
             }
+
+            /// Async reads resolve the same layered view as the sync API.
+            #[cfg(feature = "async")]
+            #[tokio::test]
+            async fn async_reads_match_the_layered_sync_view() {
+                let (stack, dir) = stack($defaults, $project_tags);
+
+                assert_eq!(
+                    stack.get_async("database.host").await.unwrap(),
+                    stack.get("database.host").unwrap()
+                );
+                assert_eq!(
+                    stack.get_as_async::<u16>("database.port").await.unwrap(),
+                    5432
+                );
+                assert_eq!(
+                    stack.get_async("tags").await.unwrap(),
+                    stack.get("tags").unwrap()
+                );
+
+                let loaded: AppConfig = stack.load_async().await.unwrap().unwrap();
+                let loaded_or_error: AppConfig = stack.load_or_error_async().await.unwrap();
+                let sync_loaded: AppConfig = stack.load().unwrap().unwrap();
+                assert_eq!(loaded, sync_loaded);
+                assert_eq!(loaded_or_error, sync_loaded);
+                assert_eq!(loaded.database.host, "db.internal");
+                // keys absent from the project layer survive from defaults
+                assert_eq!(loaded.database.pool_size, 10);
+                // a project array replaces the lower one instead of appending
+                assert_eq!(loaded.tags, vec!["c".to_string()]);
+
+                let _ = std::fs::remove_dir_all(dir);
+            }
+
+            /// Environment overrides apply to async reads with the same
+            /// precedence and `__` convention as the sync reads.
+            #[cfg(feature = "async")]
+            #[tokio::test]
+            async fn async_env_overrides_win_over_layers() {
+                let p = prefix("asyncenv");
+                set_env(&format!("{p}_DATABASE__PORT"), "9999");
+                let dir = temp_dir("asyncenv");
+                let (_, dcfg) = layer(&dir, "defaults", $defaults);
+                let (_, pcfg) = layer(&dir, "project", $project);
+                let stack = ConfigStack::new()
+                    .layer("defaults", dcfg)
+                    .layer("project", pcfg)
+                    .write_to("project")
+                    .with_env_prefix(&p)
+                    .build()
+                    .unwrap();
+
+                assert_eq!(stack.get_async("database.port").await.unwrap(), "9999");
+                assert_eq!(
+                    stack.get_as_async::<u16>("database.port").await.unwrap(),
+                    9999
+                );
+                let loaded: AppConfig = stack.load_async().await.unwrap().unwrap();
+                assert_eq!(loaded.database.port, 9999);
+                // untouched keys still come from the files
+                assert_eq!(loaded.database.host, "db.internal");
+                assert_eq!(loaded.database.pool_size, 10);
+
+                let _ = std::fs::remove_dir_all(dir);
+            }
+
+            /// Async writes go only to the configured target, never to the
+            /// other layers, and `save_async` does not flatten the view.
+            #[cfg(feature = "async")]
+            #[tokio::test]
+            async fn async_writes_target_the_selected_source_only() {
+                let (stack, dir) = stack($defaults, $project);
+
+                stack
+                    .set_async("database.host", "async-edited")
+                    .await
+                    .unwrap();
+                stack.set_val_async("added", 7u16).await.unwrap();
+
+                assert_eq!(
+                    stack
+                        .source("project")
+                        .unwrap()
+                        .get("database.host")
+                        .unwrap(),
+                    "async-edited"
+                );
+                // the lower layer is untouched
+                assert_eq!(
+                    stack
+                        .source("defaults")
+                        .unwrap()
+                        .get("database.host")
+                        .unwrap(),
+                    "localhost"
+                );
+                assert_eq!(
+                    stack.get_async("database.host").await.unwrap(),
+                    "async-edited"
+                );
+                assert_eq!(stack.get_as_async::<u16>("added").await.unwrap(), 7);
+
+                let saved = AppConfig {
+                    database: Database {
+                        host: "async-saved".to_string(),
+                        port: 1,
+                        pool_size: 2,
+                    },
+                    tags: vec!["s".to_string()],
+                };
+                stack.save_async(&saved).await.unwrap();
+                let back: AppConfig = stack.source("project").unwrap().load_or_error().unwrap();
+                assert_eq!(back, saved);
+                // the defaults file still holds its original values
+                assert_eq!(
+                    stack
+                        .source("defaults")
+                        .unwrap()
+                        .get("database.host")
+                        .unwrap(),
+                    "localhost"
+                );
+
+                let _ = std::fs::remove_dir_all(dir);
+            }
+
+            /// Async writes on a read-only stack report `NoWriteTarget`, and
+            /// an empty stack still returns `None`/`NotFound`.
+            #[cfg(feature = "async")]
+            #[tokio::test]
+            async fn async_read_only_and_empty_stack_semantics() {
+                let dir = temp_dir("asyncreadonly");
+                let (_, dcfg) = layer(&dir, "defaults", $defaults);
+                let stack = ConfigStack::new().layer("defaults", dcfg).build().unwrap();
+
+                assert!(matches!(
+                    stack.set_async("a", "b").await.unwrap_err(),
+                    Error::NoWriteTarget
+                ));
+                assert!(matches!(
+                    stack.set_val_async("a", 1u16).await.unwrap_err(),
+                    Error::NoWriteTarget
+                ));
+                assert!(matches!(
+                    stack.save_async(&0u8).await.unwrap_err(),
+                    Error::NoWriteTarget
+                ));
+
+                let missing = DotCfg::new("dotcfg_stack_test").at_dir(dir.join("missing-async"));
+                let empty = ConfigStack::new()
+                    .layer("missing", missing)
+                    .build()
+                    .unwrap();
+                assert!(empty.load_async::<AppConfig>().await.unwrap().is_none());
+                assert!(matches!(
+                    empty.load_or_error_async::<AppConfig>().await,
+                    Err(Error::NotFound)
+                ));
+
+                let _ = std::fs::remove_dir_all(dir);
+            }
+
+            #[cfg(feature = "async")]
+            #[tokio::test]
+            async fn async_malformed_layer_is_an_error() {
+                let (stack, dir) = stack($defaults, $bad);
+                assert!(stack.load_async::<AppConfig>().await.is_err());
+                assert!(stack.get_async("database.host").await.is_err());
+                let _ = std::fs::remove_dir_all(dir);
+            }
         }
     };
 }
