@@ -493,18 +493,8 @@ impl DotCfg {
     /// Creates the config directory if it doesn't exist.
     pub fn save<T: Serialize>(&self, config: &T) -> Result<(), Error> {
         self.ensure_dir()?;
-        let path = self.file_path()?;
-
-        let content = match self.format {
-            #[cfg(feature = "toml")]
-            Format::Toml => toml::to_string_pretty(config)?,
-            #[cfg(feature = "json")]
-            Format::Json => serde_json::to_string_pretty(config)?,
-            #[cfg(feature = "yaml")]
-            Format::Yaml => serde_yaml_ng::to_string(config)?,
-        };
-
-        fs::write(&path, content)?;
+        let content = value::serialize_config(&self.format, config)?;
+        fs::write(self.file_path()?, content)?;
         Ok(())
     }
 
@@ -625,6 +615,214 @@ impl DotCfg {
         let dir = self.dir()?;
         if dir.exists() {
             fs::remove_dir_all(dir)?;
+        }
+        Ok(())
+    }
+
+    #[cfg(feature = "async")]
+    async fn ensure_dir_async(&self) -> Result<(), Error> {
+        let dir = self.dir()?;
+        if !tokio::fs::try_exists(&dir).await? {
+            tokio::fs::create_dir_all(&dir).await?;
+        }
+        Ok(())
+    }
+
+    #[cfg(feature = "async")]
+    async fn read_tree_async(&self) -> Result<Option<Value>, Error> {
+        let path = self.file_path()?;
+        if !tokio::fs::try_exists(&path).await? {
+            return Ok(None);
+        }
+        let content = tokio::fs::read_to_string(path).await?;
+        value::parse(&self.format, &content).map(Some)
+    }
+
+    #[cfg(feature = "async")]
+    async fn read_tree_or_empty_async(&self) -> Result<Value, Error> {
+        Ok(self.read_tree_async().await?.unwrap_or_else(value::empty))
+    }
+
+    #[cfg(feature = "async")]
+    async fn write_tree_async(&self, tree: &Value) -> Result<(), Error> {
+        let content = value::render(&self.format, tree)?;
+        self.ensure_dir_async().await?;
+        tokio::fs::write(self.file_path()?, content).await?;
+        Ok(())
+    }
+
+    /// Load the config file asynchronously using Tokio filesystem I/O.
+    ///
+    /// Returns None when the file does not exist, unless configured environment
+    /// overrides provide values. Parsing and value handling use the same internal
+    /// representation as the synchronous API.
+    #[cfg(feature = "async")]
+    pub async fn load_async<T>(&self) -> Result<Option<T>, Error>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        let tree = self.read_tree_async().await?;
+        let env = if self.env_prefix.is_some() {
+            crate::stack::discover_env(self.env_prefix.as_deref())
+        } else {
+            Vec::new()
+        };
+        match (tree, env.is_empty()) {
+            (None, true) => Ok(None),
+            (tree, _) => {
+                let tree = tree.unwrap_or_else(value::empty);
+                if env.is_empty() {
+                    value::from_value(tree).map(Some)
+                } else {
+                    crate::stack::load_overlay(tree, env).map(Some)
+                }
+            }
+        }
+    }
+
+    /// Load the config asynchronously or return Error::NotFound.
+    #[cfg(feature = "async")]
+    pub async fn load_or_error_async<T>(&self) -> Result<T, Error>
+    where
+        T: serde::de::DeserializeOwned,
+    {
+        self.load_async().await?.ok_or(Error::NotFound)
+    }
+
+    /// Load the config asynchronously, writing default values when missing.
+    #[cfg(feature = "async")]
+    pub async fn load_or_default_async<T>(&self) -> Result<T, Error>
+    where
+        T: serde::de::DeserializeOwned + Serialize + Default,
+    {
+        match self.load_async().await? {
+            Some(config) => Ok(config),
+            None => {
+                let default = T::default();
+                self.save_async(&default).await?;
+                Ok(default)
+            }
+        }
+    }
+
+    /// Save a config value asynchronously.
+    #[cfg(feature = "async")]
+    pub async fn save_async<T: Serialize>(&self, config: &T) -> Result<(), Error> {
+        self.ensure_dir_async().await?;
+        let content = value::serialize_config(&self.format, config)?;
+        tokio::fs::write(self.file_path()?, content).await?;
+        Ok(())
+    }
+
+    /// Get a key as a string asynchronously, honoring configured env overrides.
+    #[cfg(feature = "async")]
+    pub async fn get_async(&self, key: &str) -> Result<String, Error> {
+        if let Some((_, raw)) = self.env_override(key)? {
+            return Ok(raw);
+        }
+        let tree = self.read_tree_async().await?.ok_or(Error::NotFound)?;
+        Ok(value::display(&self.format, value::get_node(&tree, key)?))
+    }
+
+    /// Set a string value asynchronously, preserving all other keys.
+    #[cfg(feature = "async")]
+    pub async fn set_async(&self, key: &str, raw: &str) -> Result<(), Error> {
+        self.set_node_async(key, Value::String(raw.to_string()))
+            .await
+    }
+
+    #[cfg(feature = "async")]
+    async fn set_node_async(&self, key: &str, new_value: Value) -> Result<(), Error> {
+        let mut tree = self.read_tree_or_empty_async().await?;
+        value::set_node(&mut tree, key, new_value)?;
+        self.write_tree_async(&tree).await
+    }
+
+    /// Get a key as a typed value asynchronously.
+    #[cfg(feature = "async")]
+    pub async fn get_as_async<T: serde::de::DeserializeOwned>(
+        &self,
+        key: &str,
+    ) -> Result<T, Error> {
+        if let Some((var, raw)) = self.env_override(key)? {
+            return env::from_env_str(&var, &raw);
+        }
+        let tree = self.read_tree_async().await?.ok_or(Error::NotFound)?;
+        value::from_value(value::get_node(&tree, key)?.clone())
+    }
+
+    /// Set a typed value asynchronously, preserving all other keys.
+    #[cfg(feature = "async")]
+    pub async fn set_val_async<T: Serialize>(&self, key: &str, new_value: T) -> Result<(), Error> {
+        self.set_node_async(key, value::to_value(new_value)?).await
+    }
+
+    /// Search parent directories for this config file asynchronously.
+    #[cfg(feature = "async")]
+    pub async fn find_in_ancestors_async(self) -> Result<Option<Self>, Error> {
+        let cwd = std::env::current_dir().map_err(Error::Io)?;
+        self.find_in_ancestors_from_async(cwd).await
+    }
+
+    /// Search parent directories for this config file from an explicit path.
+    #[cfg(feature = "async")]
+    pub async fn find_in_ancestors_from_async(
+        self,
+        start: impl AsRef<Path>,
+    ) -> Result<Option<Self>, Error> {
+        let ext = match &self.format {
+            #[cfg(feature = "toml")]
+            Format::Toml => "toml",
+            #[cfg(feature = "json")]
+            Format::Json => "json",
+            #[cfg(feature = "yaml")]
+            Format::Yaml => "yaml",
+        };
+        let file_name = format!("{}.{}", self.filename, ext);
+        let dot_dir = format!(".{}", self.app_name);
+        for ancestor in start.as_ref().ancestors() {
+            let dir = ancestor.join(&dot_dir);
+            let file = dir.join(&file_name);
+            match tokio::fs::metadata(&file).await {
+                Ok(metadata) if metadata.is_file() => {
+                    return Ok(Some(Self {
+                        app_name: self.app_name,
+                        strategy: DirStrategy::Custom(dir),
+                        format: self.format,
+                        filename: self.filename,
+                        env_prefix: self.env_prefix,
+                    }));
+                }
+                Ok(_) => {}
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                Err(error) => return Err(Error::Io(error)),
+            }
+        }
+        Ok(None)
+    }
+
+    /// Returns whether the config file exists asynchronously.
+    #[cfg(feature = "async")]
+    pub async fn exists_async(&self) -> Result<bool, Error> {
+        Ok(tokio::fs::try_exists(self.file_path()?).await?)
+    }
+
+    /// Delete the config file asynchronously, leaving its directory in place.
+    #[cfg(feature = "async")]
+    pub async fn delete_file_async(&self) -> Result<(), Error> {
+        let path = self.file_path()?;
+        if tokio::fs::try_exists(&path).await? {
+            tokio::fs::remove_file(path).await?;
+        }
+        Ok(())
+    }
+
+    /// Delete the config directory and its contents asynchronously.
+    #[cfg(feature = "async")]
+    pub async fn delete_dir_async(&self) -> Result<(), Error> {
+        let dir = self.dir()?;
+        if tokio::fs::try_exists(&dir).await? {
+            tokio::fs::remove_dir_all(dir).await?;
         }
         Ok(())
     }

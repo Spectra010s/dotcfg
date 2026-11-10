@@ -64,6 +64,21 @@ pub(crate) fn render(format: &Format, value: &Value) -> Result<String, Error> {
     })
 }
 
+/// Serialize a user configuration using the selected format.
+///
+/// Shared by sync and async save operations so both APIs retain identical
+/// format-specific Serde behavior.
+pub(crate) fn serialize_config<T: Serialize>(format: &Format, value: &T) -> Result<String, Error> {
+    Ok(match format {
+        #[cfg(feature = "toml")]
+        Format::Toml => toml::to_string_pretty(value)?,
+        #[cfg(feature = "json")]
+        Format::Json => serde_json::to_string_pretty(value)?,
+        #[cfg(feature = "yaml")]
+        Format::Yaml => serde_yaml_ng::to_string(value)?,
+    })
+}
+
 /// Serialize any `T` into the tree.
 pub(crate) fn to_value<T: Serialize>(value: T) -> Result<Value, Error> {
     serde_json::to_value(value).map_err(|e| Error::Serialize(e.to_string()))
