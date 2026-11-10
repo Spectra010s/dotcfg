@@ -7,10 +7,10 @@ const dependency = (value: string) => `[dependencies]
 ${value}
 serde = { version = "1", features = ["derive"] }`;
 const installValues = {
-  toml: dependency('dotcfg = "0.3.0"'),
-  json: dependency('dotcfg = { version = "0.3.0", features = ["json"] }'),
-  yaml: dependency('dotcfg = { version = "0.3.0", features = ["yaml"] }'),
-  all: dependency('dotcfg = { version = "0.3.0", features = ["json", "yaml"] }'),
+  toml: dependency('dotcfg = "0.4.0"'),
+  json: dependency('dotcfg = { version = "0.4.0", features = ["json"] }'),
+  yaml: dependency('dotcfg = { version = "0.4.0", features = ["yaml"] }'),
+  all: dependency('dotcfg = { version = "0.4.0", features = ["json", "yaml"] }'),
 };
 
 const topics = [

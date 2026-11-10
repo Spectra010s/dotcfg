@@ -21,7 +21,7 @@ import Callout from '../components/Callout.astro';
     <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
       TOML — default
     </h2>
-    <CodeBlock label="Cargo.toml" code={'[dependencies]\ndotcfg = "0.3.0"'} />
+    <CodeBlock label="Cargo.toml" code={'[dependencies]\ndotcfg = "0.4.0"'} />
     <p>
       <code>DotCfg::new("mytool")</code> selects TOML when the default features are enabled. You can
       also call <code>.toml()</code> explicitly.
@@ -32,7 +32,7 @@ import Callout from '../components/Callout.astro';
     </h2>
     <CodeBlock
       label="Cargo.toml"
-      code={'[dependencies]\ndotcfg = { version = "0.3.0", features = ["json"] }'}
+      code={'[dependencies]\ndotcfg = { version = "0.4.0", features = ["json"] }'}
     />
     <CodeBlock
       label="Rust"
@@ -44,7 +44,7 @@ import Callout from '../components/Callout.astro';
     </h2>
     <CodeBlock
       label="Cargo.toml"
-      code={'[dependencies]\ndotcfg = { version = "0.3.0", features = ["yaml"] }'}
+      code={'[dependencies]\ndotcfg = { version = "0.4.0", features = ["yaml"] }'}
     />
     <CodeBlock
       label="Rust"
@@ -60,7 +60,7 @@ import Callout from '../components/Callout.astro';
     </p>
     <CodeBlock
       label="Cargo.toml"
-      code={'dotcfg = { version = "0.3.0", features = ["json", "yaml"] }'}
+      code={'dotcfg = { version = "0.4.0", features = ["json", "yaml"] }'}
     />
 
     <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">

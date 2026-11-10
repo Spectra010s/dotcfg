@@ -43,16 +43,16 @@ Most config crates either lock you into a fixed directory strategy or only handl
 
 ```toml
 # TOML only (default)
-dotcfg = "0.3"
+dotcfg = "0.4.0"
 
 # JSON only
-dotcfg = { version = "0.3", default-features = false, features = ["json"] }
+dotcfg = { version = "0.4.0", default-features = false, features = ["json"] }
 
 # YAML only
-dotcfg = { version = "0.3", default-features = false, features = ["yaml"] }
+dotcfg = { version = "0.4.0", default-features = false, features = ["yaml"] }
 
 # All three
-dotcfg = { version = "0.3", features = ["json", "yaml"] }
+dotcfg = { version = "0.4.0", features = ["json", "yaml"] }
 ```
 
 ## Quick Start
