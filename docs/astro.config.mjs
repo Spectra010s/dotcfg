@@ -5,7 +5,7 @@ import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
-  site: 'https://dotcfg.pxxl.click',
+  site: 'https://dotcfg.spectra010s.com',
   integrations: [mdx(), sitemap(), ogImages()],
   vite: {
     plugins: [tailwindcss()],

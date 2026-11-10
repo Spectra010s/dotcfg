@@ -1,0 +1,82 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import CodeBlock from '../../components/CodeBlock.astro';
+import Callout from '../../components/Callout.astro';
+
+const loading = `let cfg = DotCfg::new("myapp");
+
+// No file and no matching environment values: Ok(None).
+let optional: Option<AppConfig> = cfg.load_async().await?;
+
+// Require a source instead of accepting None.
+let required: AppConfig = cfg.load_or_error_async().await?;
+
+// Or create and save AppConfig::default() when no source exists.
+let ready: AppConfig = cfg.load_or_default_async().await?;`;
+
+const saving = `let config = AppConfig {
+    theme: "dark".into(),
+};
+
+cfg.save_async(&config).await?;`;
+---
+
+<DocsLayout
+  title="Async loading and saving — dotcfg"
+  description="Load or save complete configuration values with Tokio-backed file I/O."
+>
+  <article class="[&_p]:max-w-[720px]">
+    <span class="text-[13px] font-bold text-primary">Async I/O</span>
+    <h1 class="m-0 mb-5 mt-3 text-[clamp(38px,7vw,64px)] leading-[1.02] tracking-[-0.045em] max-[760px]:text-[44px]">
+      Async loading & saving
+    </h1>
+    <p class="max-w-[680px] text-xl text-muted-foreground max-[760px]:text-lg">
+      In v0.4.0, <code>DotCfg</code> can load and save complete structs with Tokio file I/O. Enable
+      the <code>async</code> feature as shown in the{' '}
+      <a class="font-bold text-primary" href="/async-io">async I/O introduction</a>, then call
+      these methods from an async function.
+    </p>
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      Choose what missing configuration means
+    </h2>
+    <p>
+      <code>load_async()</code> returns <code>Ok(None)</code> when neither a file nor matching
+      environment values exist. <code>load_or_error_async()</code> returns{' '}
+      <code>Error::NotFound</code> instead. <code>load_or_default_async()</code> saves your type's{' '}
+      <code>Default</code> value when there is no source. Pick the behavior your application needs.
+    </p>
+    <CodeBlock label="Rust, inside an async function" code={loading} />
+    <Callout type="info" title="Missing, empty, and malformed remain distinct">
+      <p>
+        A valid empty file is still an existing source and is deserialized as an empty map. A
+        malformed file still returns a parse error. See the{' '}
+        <a class="font-bold text-primary" href="/loading-saving">loading and saving guide</a>
+        for the full behavior.
+      </p>
+    </Callout>
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      Save a complete value
+    </h2>
+    <p>
+      <code>save_async()</code> serializes the value in the chosen format and writes it to the
+      source's config file. The directory is created when needed.
+    </p>
+    <CodeBlock label="Rust" code={saving} />
+    <p>
+      To change one field while preserving the rest of the file, use the methods in{' '}
+      <a class="font-bold text-primary" href="/async-io/key-access">async key access</a>.
+    </p>
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      When you have several sources
+    </h2>
+    <p>
+      <code>ConfigStack</code> provides <code>load_async()</code>,{' '}
+      <code>load_or_error_async()</code>, and <code>save_async()</code> for layered configuration.
+      Its save method writes only to the selected source. See{' '}
+      <a class="font-bold text-primary" href="/async-io/config-stack">async ConfigStack</a>.
+    </p>
+  </article>
+</DocsLayout>

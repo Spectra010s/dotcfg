@@ -106,6 +106,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     </div>
 
     <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      Migrating to 0.4.0
+    </h2>
+    <p>
+      In 0.4.0, the public error type is named <code>dotcfg::Error</code>. If your code imports or
+      refers to <code>DotCfgError</code>, update it to <code>Error</code>.
+    </p>
+    <CodeBlock
+      label="Rust"
+      code={'// Before\nuse dotcfg::DotCfgError;\n\n// 0.4.0+\nuse dotcfg::Error;'}
+    />
+    <Callout type="warning" title="DotCfgError is deprecated, not removed">
+      <p>
+        <code>DotCfgError</code> remains available as a deprecated alias, so existing code can still
+        compile while you migrate. New code should use <code>Error</code>. If you exhaustively match
+        error variants, also account for the newer <code>Serialize</code> and{' '}
+        <code>Deserialize</code> variants.
+      </p>
+    </Callout>
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
       Where next?
     </h2>
     <p>

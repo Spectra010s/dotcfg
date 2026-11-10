@@ -8,7 +8,7 @@ export async function GET(context: APIContext) {
     title: 'dotcfg blog',
     description:
       'Articles about dotcfg, configuration management in Rust, and the design decisions behind the crate.',
-    site: context.site?.href ?? 'https://dotcfg.pxxl.click',
+    site: context.site?.href ?? 'https://dotcfg.spectra010s.com',
     items: posts
       .sort((a, b) => b.data.publishedAt.getTime() - a.data.publishedAt.getTime())
       .map((post) => ({

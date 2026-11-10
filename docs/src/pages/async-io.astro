@@ -1,0 +1,126 @@
+---
+import DocsLayout from '../layouts/DocsLayout.astro';
+import CodeBlock from '../components/CodeBlock.astro';
+import Callout from '../components/Callout.astro';
+
+const dependencies = `[dependencies]
+dotcfg = { version = "0.4.0", features = ["async"] }
+serde = { version = "1", features = ["derive"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }`;
+
+const singleSource = `use dotcfg::DotCfg;
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize)]
+struct AppConfig {
+    port: u16,
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let cfg = DotCfg::new("myapp");
+    let previous: Option<AppConfig> = cfg.load_async().await?;
+    cfg.save_async(&AppConfig { port: 8080 }).await?;
+    let port: u16 = cfg.get_as_async("port").await?;
+    println!("Previous config: {}, current port: {port}", previous.is_some());
+    Ok(())
+}`;
+
+const layered = `use dotcfg::{ConfigStack, DotCfg};
+
+let defaults = DotCfg::new("myapp").at_dir("./config/defaults");
+let project = DotCfg::new("myapp").at_dir("./config/project");
+let cfg = ConfigStack::new()
+    .layer("defaults", defaults)
+    .layer("project", project)
+    .write_to("project")
+    .with_env_prefix("APP")
+    .build()?;
+
+let port: u16 = cfg.get_as_async("server.port").await?;
+println!("Current port: {port}");
+cfg.set_val_async("server.port", 8080u16).await?;`;
+---
+
+<DocsLayout
+  title="Async I/O — dotcfg"
+  description="Use Tokio-backed async file operations with DotCfg and ConfigStack."
+>
+  <article class="[&_p]:max-w-[720px]">
+    <span class="text-[13px] font-bold text-primary">Core API</span>
+    <h1 class="m-0 mb-5 mt-3 text-[clamp(38px,7vw,64px)] leading-[1.02] tracking-[-0.045em] max-[760px]:text-[44px]">
+      Async I/O
+    </h1>
+    <p class="max-w-[680px] text-xl text-muted-foreground max-[760px]:text-lg">
+      v0.4.0 introduces optional Tokio-backed async counterparts for <code>DotCfg</code> and{' '}
+      <code>ConfigStack</code> loading, saving, and key access.
+    </p>
+    <p>
+      Start with <a class="font-bold text-primary" href="/async-io/loading-saving">async loading and saving</a>,{' '}
+      <a class="font-bold text-primary" href="/async-io/key-access">async key access</a>, or{' '}
+      <a class="font-bold text-primary" href="/async-io/config-stack">async ConfigStack</a>.
+      Each guide links back to the corresponding configuration rules.
+    </p>
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      Enable the feature
+    </h2>
+    <CodeBlock label="Cargo.toml" code={dependencies} />
+    <p>
+      The <code>async</code> feature enables Tokio file I/O inside dotcfg. Your application also
+      needs a Tokio runtime to call the methods with <code>.await</code>. TOML remains the default
+      format; JSON and YAML can be enabled alongside <code>async</code>.
+    </p>
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      One file with DotCfg
+    </h2>
+    <p>
+      Call <code>load_async()</code> when a missing file is acceptable, or{' '}
+      <code>load_or_error_async()</code> when it is required.{' '}
+      <code>load_or_default_async()</code> writes a default value when the file is missing.
+    </p>
+    <CodeBlock label="src/main.rs" code={singleSource} />
+    <p>
+      For individual keys, use <code>get_async()</code> and <code>set_async()</code> for strings,
+      or <code>get_as_async()</code> and <code>set_val_async()</code> for typed values.{' '}
+      <code>save_async()</code> writes a complete config. Async file discovery, existence checks,
+      and deletion are also available on <code>DotCfg</code>.
+    </p>
+    <p>
+      Read <a class="font-bold text-primary" href="/async-io/loading-saving">async loading and saving</a>{' '}
+      for missing files and complete structs, then <a class="font-bold text-primary" href="/async-io/key-access">async key access</a>{' '}
+      for strings, typed values, and nested keys.
+    </p>
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      Layered files with ConfigStack
+    </h2>
+    <p>
+      Build the stack just as you would for synchronous use. Async reads still merge earlier and
+      later layers, with environment overrides on top. Async writes still go only to the source
+      selected by <code>write_to()</code>.
+    </p>
+    <CodeBlock label="Rust, inside an async function" code={layered} />
+    <p>
+      <code>ConfigStack</code> also has <code>get_async()</code>, <code>get_as_async()</code>,{' '}
+      <code>load_async()</code>, <code>load_or_error_async()</code>, <code>set_async()</code>,{' '}
+      <code>set_val_async()</code>, and <code>save_async()</code>.
+      It has no <code>load_or_default_async()</code>: the stack does not choose a file to create
+      when every source is missing. To work with one named source directly, call{' '}
+      <code>cfg.source("project")?</code> and then a <code>DotCfg</code> async method.
+    </p>
+    <p>
+      The <a class="font-bold text-primary" href="/async-io/config-stack">async ConfigStack guide</a>{' '}
+      covers resolved reads, write targets, and direct source access.
+    </p>
+    <Callout type="info" title="Same configuration rules">
+      <p>
+        Async methods change how files are read and written. Parsing, merging, environment
+        precedence, missing-file behavior, and write ownership follow the same rules as the sync
+        methods. See <a class="font-bold text-primary" href="/config-stack/resolution">layers and resolution</a>{' '}
+        for those rules.
+      </p>
+    </Callout>
+  </article>
+</DocsLayout>

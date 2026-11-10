@@ -37,6 +37,11 @@ const recipes = [
     text: 'Let deployment or shell values override the saved file.',
     code: `let cfg = DotCfg::new("mytool")\n    .with_env_prefix("myapp");\nlet port: u16 = cfg.get_as("port")?;`,
   },
+  {
+    title: 'Layer several config sources',
+    text: 'Resolve defaults and project settings together while keeping writes owned by one source.',
+    code: `let cfg = ConfigStack::new()\n    .layer("defaults", defaults)\n    .layer("project", project)\n    .write_to("project")\n    .build()?;`,
+  },
 ];
 const cliPattern = `let saved: AppConfig = cfg.load()?.unwrap_or_default();
 
