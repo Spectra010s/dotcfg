@@ -64,7 +64,6 @@ pub(crate) fn render(format: &Format, value: &Value) -> Result<String, Error> {
     })
 }
 
-
 /// Serialize a user configuration using the selected format.
 ///
 /// Shared by sync and async save operations so both APIs retain identical
