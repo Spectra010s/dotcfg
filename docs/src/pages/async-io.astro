@@ -103,8 +103,9 @@ cfg.set_val_async("server.port", 8080u16).await?;`;
     </p>
     <CodeBlock label="Rust, inside an async function" code={layered} />
     <p>
-      <code>ConfigStack</code> also has <code>get_async()</code>, <code>load_async()</code>,{' '}
-      <code>load_or_error_async()</code>, <code>set_async()</code>, and <code>save_async()</code>.
+      <code>ConfigStack</code> also has <code>get_async()</code>, <code>get_as_async()</code>,{' '}
+      <code>load_async()</code>, <code>load_or_error_async()</code>, <code>set_async()</code>,{' '}
+      <code>set_val_async()</code>, and <code>save_async()</code>.
       It has no <code>load_or_default_async()</code>: the stack does not choose a file to create
       when every source is missing. To work with one named source directly, call{' '}
       <code>cfg.source("project")?</code> and then a <code>DotCfg</code> async method.

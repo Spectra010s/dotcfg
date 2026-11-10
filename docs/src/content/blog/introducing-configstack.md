@@ -153,10 +153,10 @@ Values can be converted to a requested type with `get_as()`:
 let port: u16 = config.get_as("server.port")?;
 ```
 
-And the resolved configuration can be deserialized into a Rust type with `load()`:
+And the resolved configuration can be deserialized into a Rust type with `load_or_error()` when configuration is required:
 
 ```rust
-let config: AppConfig = config.load()?;
+let app_config: AppConfig = config.load_or_error()?;
 ```
 
 The caller doesn't need to manually inspect every layer to determine where each value came from.
@@ -314,3 +314,5 @@ And applications that only need one configuration file can continue using `DotCf
 `ConfigStack` isn't intended to replace `DotCfg`.
 
 It fills the space that appears when configuration stops coming from one place.
+
+For Tokio-based file operations on a stack, see the [async ConfigStack guide](/async-io/config-stack). The layering rules are the same.
