@@ -1,0 +1,85 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import CodeBlock from '../../components/CodeBlock.astro';
+import Callout from '../../components/Callout.astro';
+
+const stackExample = `use dotcfg::{ConfigStack, DotCfg};
+
+let defaults = DotCfg::new("myapp").at_dir("./config/defaults");
+let project = DotCfg::new("myapp").at_dir("./config/project");
+let cfg = ConfigStack::new()
+    .layer("defaults", defaults)
+    .layer("project", project)
+    .write_to("project")
+    .with_env_prefix("APP")
+    .build()?;
+
+let port: u16 = cfg.get_as_async("server.port").await?;
+cfg.set_val_async("server.port", 8080u16).await?;`;
+
+const completeConfig = `let config: Option<AppConfig> = cfg.load_async().await?;
+let required: AppConfig = cfg.load_or_error_async().await?;
+
+// Writes only the value supplied, to the project source.
+cfg.save_async(&required).await?;`;
+---
+
+<DocsLayout
+  title="Async ConfigStack — dotcfg"
+  description="Resolve layered configuration and write to an explicit source with Tokio file I/O."
+>
+  <article class="[&_p]:max-w-[720px]">
+    <span class="text-[13px] font-bold text-primary">Async I/O</span>
+    <h1 class="m-0 mb-5 mt-3 text-[clamp(38px,7vw,64px)] leading-[1.02] tracking-[-0.045em] max-[760px]:text-[44px]">
+      Async ConfigStack
+    </h1>
+    <p class="max-w-[680px] text-xl text-muted-foreground max-[760px]:text-lg">
+      v0.4.0 adds async operations to <code>ConfigStack</code>. You still build a stack from named{' '}
+      <code>DotCfg</code> sources; its file reads and writes then use Tokio when you call the async
+      methods. See the <a class="font-bold text-primary" href="/async-io">async I/O introduction</a>{' '}
+      for feature setup.
+    </p>
+    <CodeBlock label="Rust, inside an async function" code={stackExample} />
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      Read the resolved view
+    </h2>
+    <p>
+      <code>get_async()</code> returns a string; <code>get_as_async()</code> returns the type you
+      request. <code>load_async()</code> deserializes the complete resolved view and returns{' '}
+      <code>None</code> only when every source is missing and no matching environment value exists.
+      Use <code>load_or_error_async()</code> to require a source.
+    </p>
+    <CodeBlock label="Rust, with an AppConfig type" code={completeConfig} />
+    <p>
+      Earlier files have lower precedence than later files, and environment overrides win over
+      both. Nested maps merge, while arrays and scalar values replace earlier values. The{' '}
+      <a class="font-bold text-primary" href="/config-stack/resolution">layers and resolution guide</a>{' '}
+      explains these rules in detail; the async methods use the same resolution.
+    </p>
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      Write to the chosen source
+    </h2>
+    <p>
+      <code>set_async()</code>, <code>set_val_async()</code>, and <code>save_async()</code> write
+      only to the source selected by <code>write_to()</code>. <code>save_async()</code> writes the
+      value you pass; it does not copy lower layers or environment values into that file. A stack
+      without a write target returns <code>Error::NoWriteTarget</code> for writes.
+    </p>
+    <Callout type="info" title="No implicit default file">
+      <p>
+        <code>ConfigStack</code> has no <code>load_or_default_async()</code> because a stack cannot
+        choose which source should receive a new file. To create defaults in a particular source,
+        call <code>let config: AppConfig = cfg.source("project")?.load_or_default_async().await?;</code>.
+      </p>
+    </Callout>
+    <p>
+      Direct <code>source()</code> access returns a <code>DotCfg</code> reference and bypasses
+      stack resolution. For individual keys, see{' '}
+      <a class="font-bold text-primary" href="/async-io/key-access">async key access</a>. The{' '}
+      <a class="font-bold text-primary" href="/config-stack/reading-writing">ConfigStack reading and writing guide</a>{' '}
+      covers source ownership in more detail.
+    </p>
+  </article>
+</DocsLayout>

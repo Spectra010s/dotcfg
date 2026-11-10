@@ -1,0 +1,73 @@
+---
+import DocsLayout from '../../layouts/DocsLayout.astro';
+import CodeBlock from '../../components/CodeBlock.astro';
+import Callout from '../../components/Callout.astro';
+
+const strings = `cfg.set_async("user.name", "tayo").await?;
+let name = cfg.get_async("user.name").await?;`;
+
+const typed = `cfg.set_val_async("server.port", 8080u16).await?;
+let port: u16 = cfg.get_as_async("server.port").await?;`;
+---
+
+<DocsLayout
+  title="Async key access — dotcfg"
+  description="Read and update individual configuration keys asynchronously with DotCfg and ConfigStack."
+>
+  <article class="[&_p]:max-w-[720px]">
+    <span class="text-[13px] font-bold text-primary">Async I/O</span>
+    <h1 class="m-0 mb-5 mt-3 text-[clamp(38px,7vw,64px)] leading-[1.02] tracking-[-0.045em] max-[760px]:text-[44px]">
+      Async key access
+    </h1>
+    <p class="max-w-[680px] text-xl text-muted-foreground max-[760px]:text-lg">
+      The <code>async</code> feature adds key-level methods that read and write through Tokio.
+      Enable it as shown in the <a class="font-bold text-primary" href="/async-io">async I/O introduction</a>.
+      The key paths and value types work like the <a class="font-bold text-primary" href="/key-access">sync key API</a>.
+    </p>
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      String values
+    </h2>
+    <p>
+      <code>set_async()</code> writes a string value and preserves other keys in the file.{' '}
+      <code>get_async()</code> reads the key as a string. Use dot-separated paths for nested keys.
+    </p>
+    <CodeBlock label="Rust, inside an async function" code={strings} />
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      Typed values
+    </h2>
+    <p>
+      <code>set_val_async()</code> stores a Serde-compatible value in its native configuration
+      type. <code>get_as_async()</code> deserializes a key into the Rust type you request.
+    </p>
+    <CodeBlock label="Rust, inside an async function" code={typed} />
+    <p>
+      With <code>with_env_prefix()</code>, matching environment variables still win on reads.
+      Writes still change the file only. The{' '}
+      <a class="font-bold text-primary" href="/environment">environment guide</a> explains
+      how <code>_</code> and <code>__</code> map to keys.
+    </p>
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      Keys in a ConfigStack
+    </h2>
+    <p>
+      <code>ConfigStack</code> has the same four async key methods. Reads use the resolved view of
+      every layer plus environment overrides. Writes use only the source named by{' '}
+      <code>write_to()</code>.
+    </p>
+    <Callout type="info" title="Read one source directly">
+      <p>
+        <code>cfg.source("project")?</code> returns that source's <code>DotCfg</code>. You can
+        call its async key methods to bypass the layered view. See{' '}
+        <a class="font-bold text-primary" href="/async-io/config-stack">async ConfigStack</a>
+        for a complete layered example.
+      </p>
+    </Callout>
+    <p>
+      For complete structs, use{' '}
+      <a class="font-bold text-primary" href="/async-io/loading-saving">async loading and saving</a>.
+    </p>
+  </article>
+</DocsLayout>
