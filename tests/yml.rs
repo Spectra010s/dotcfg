@@ -44,6 +44,25 @@ fn yaml_and_yml_selection_and_writes() {
 }
 
 #[test]
+fn exact_file_path_does_not_probe_other_yaml_names() {
+    let temp = tempfile::tempdir().unwrap();
+    let yaml = temp.path().join("config.yaml");
+    let yml = temp.path().join("config.yml");
+    std::fs::write(&yaml, "name: canonical\n").unwrap();
+    std::fs::write(&yml, "name: exact\n").unwrap();
+
+    let cfg = DotCfg::new("mytool").yaml().at_file(&yml);
+    assert_eq!(cfg.file_path().unwrap(), yml);
+    assert_eq!(cfg.load::<Settings>().unwrap().unwrap().name, "exact");
+    cfg.save(&Settings {
+        name: "updated".into(),
+    })
+    .unwrap();
+    assert_eq!(std::fs::read_to_string(&yaml).unwrap(), "name: canonical\n");
+    assert_eq!(cfg.load::<Settings>().unwrap().unwrap().name, "updated");
+}
+
+#[test]
 fn ancestor_search_finds_yml_and_prefers_yaml_in_same_directory() {
     let temp = tempfile::tempdir().unwrap();
     let app_dir = temp.path().join(".mytool");

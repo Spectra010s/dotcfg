@@ -15,6 +15,11 @@ const customExample = `let cfg = DotCfg::new("mytool")
     .at_dir("/my/project/.config");
 
 // /my/project/.config/config.toml`;
+const exactFileExample = `let cfg = DotCfg::new("mytool")
+    .yaml()
+    .at_file("/my/project/settings.yml");
+
+// /my/project/settings.yml`;
 const ancestorExample = `let project = DotCfg::new("mytool")
     .find_in_ancestors()?;
 
@@ -92,6 +97,27 @@ const ancestorFromExample = `let cfg = DotCfg::new("mytool")
     </Callout>
 
     <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      Exact file path{' '}
+      <span class="ml-[7px] inline-block rounded-full border border-accent-tint px-[7px] py-[3px] align-middle text-[11px] font-bold tracking-normal text-primary">
+        Since v0.4.0
+      </span>
+    </h2>
+    <p>
+      Use <code>.at_file()</code> when you already have a file path, such as one passed through a
+      CLI flag. dotcfg reads and writes that path exactly, including its extension. The format
+      builder still chooses the parser, so <code>.yaml()</code> can read a <code>.yml</code> file.
+      <code>.at_dir()</code> instead takes a directory and appends the usual filename and extension.
+    </p>
+    <CodeBlock label="Rust" code={exactFileExample} />
+    <p>
+      The last path choice wins: calling <code>.at_dir()</code>, <code>.dot()</code>,{' '}
+      <code>.xdg()</code>, or <code>.native()</code> after <code>.at_file()</code> switches back to a
+      derived path. <code>.filename()</code> is ignored while an exact file path is selected.
+      <code>.delete_dir()</code> is unavailable for an exact file path; use{' '}
+      <code>.delete_file()</code> to remove that file.
+    </p>
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
       Discover a project config{' '}
       <span class="ml-[7px] inline-block rounded-full border border-accent-tint px-[7px] py-[3px] align-middle text-[11px] font-bold tracking-normal text-primary">
         Since 0.3.0
@@ -144,6 +170,12 @@ const ancestorFromExample = `let cfg = DotCfg::new("mytool")
         <strong class="mb-[7px] block w-max">Custom</strong>
         <p class="m-0 text-sm text-muted-foreground">
           Tests, portable setups, or a known project directory.
+        </p>
+      </div>
+      <div class="rounded-[9px] border border-border bg-card p-4">
+        <strong class="mb-[7px] block w-max">Exact file</strong>
+        <p class="m-0 text-sm text-muted-foreground">
+          A config file path supplied by the user or another part of your program.
         </p>
       </div>
       <div class="rounded-[9px] border border-border bg-card p-4">
