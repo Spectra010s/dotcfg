@@ -31,6 +31,7 @@ Most config crates either lock you into a fixed directory strategy or only handl
 | :------------------------------------------ | :-------------------------------------: | :------------------------------------: |
 | **Dot-dir support (`~/.app/`)**             |           ✅ Built-in default           |          ❌ (XDG/Native only)          |
 | **XDG directory (`~/.config/app/`)**        |             ✅ via `.xdg()`             |                   ✅                   |
+| **Native platform config directory**        |            ✅ via `.native()`           |                   ✅                   |
 | **Custom directory (`at_dir`)**             |      ✅ any path, exactly as given      |                   ❌                   |
 | **Project discovery (`find_in_ancestors`)** | ✅ walks from current dir, nearest wins |                   ❌                   |
 | **Ad-hoc key get/set by string path**       |       ✅ (`cfg.get("user.name")`)       |         ❌ (Full struct only)          |
@@ -97,6 +98,9 @@ let cfg = DotCfg::new("mytool");
 
 // ~/.config/mytool/config.toml  (XDG standard, cross-platform)
 let cfg = DotCfg::new("mytool").xdg();
+
+// Platform-native config directory (XDG, macOS Application Support, or Windows Roaming AppData)
+let cfg = DotCfg::new("mytool").native();
 
 // explicit dot (same as default)
 let cfg = DotCfg::new("mytool").dot();

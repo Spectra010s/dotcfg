@@ -78,6 +78,8 @@ pub enum DirStrategy {
     Dot,
     /// `~/.config/toolname/` — XDG standard
     Xdg,
+    /// The operating system's native application config directory
+    Native,
     /// Custom directory path
     Custom(PathBuf),
 }
@@ -186,6 +188,15 @@ impl DotCfg {
         self
     }
 
+    /// Use the platform's native application config directory.
+    ///
+    /// Uses XDG config on Linux, Application Support on macOS, and Roaming
+    /// AppData on Windows, with the app name appended in each case.
+    pub fn native(mut self) -> Self {
+        self.strategy = DirStrategy::Native;
+        self
+    }
+
     /// Use `~/.toolname/` (default)
     pub fn dot(mut self) -> Self {
         self.strategy = DirStrategy::Dot;
@@ -194,7 +205,7 @@ impl DotCfg {
 
     /// Use a custom directory path.
     ///
-    /// Bypasses both `Dot` and `Xdg` resolution. The config file lives directly
+    /// Bypasses `Dot`, `Xdg`, and `Native` resolution. The config file lives directly
     /// under the directory you pass, exactly as given. It can be any path you
     /// choose, like a temp dir, a project dir, a portable dir, or even a home
     /// dir if you want. No prefix is enforced, so `".mytool"` and `"my-config"`
@@ -357,7 +368,7 @@ impl DotCfg {
                 home.join(format!(".{}", self.app_name))
             }
             DirStrategy::Xdg => {
-                // Uses etcetera — handles Linux (XDG), macOS, Windows correctly
+                // Explicit XDG layout, regardless of the operating system.
                 use etcetera::app_strategy::{AppStrategy, AppStrategyArgs, Xdg};
                 let strategy = Xdg::new(AppStrategyArgs {
                     top_level_domain: "".to_string(),
@@ -366,6 +377,18 @@ impl DotCfg {
                 })
                 .map_err(|_| Error::NoHomeDir)?;
                 strategy.config_dir()
+            }
+            DirStrategy::Native => {
+                use etcetera::base_strategy::{BaseStrategy, choose_native_strategy};
+
+                let strategy = choose_native_strategy().map_err(|_| Error::NoHomeDir)?;
+                // Etcetera classifies macOS Application Support as data, while
+                // native application configuration convention uses that path.
+                #[cfg(any(target_os = "macos", target_os = "ios"))]
+                let base = strategy.data_dir();
+                #[cfg(not(any(target_os = "macos", target_os = "ios")))]
+                let base = strategy.config_dir();
+                base.join(&self.app_name)
             }
             DirStrategy::Custom(path) => path.clone(),
         };

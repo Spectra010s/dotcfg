@@ -37,6 +37,25 @@ fn temp_custom_dir(suffix: &str) -> PathBuf {
     path
 }
 
+#[test]
+fn native_dir_uses_platform_config_root() {
+    use etcetera::base_strategy::{BaseStrategy, choose_native_strategy};
+
+    let strategy = choose_native_strategy().unwrap();
+    #[cfg(any(target_os = "macos", target_os = "ios"))]
+    let root = strategy.data_dir();
+    #[cfg(not(any(target_os = "macos", target_os = "ios")))]
+    let root = strategy.config_dir();
+
+    let cfg = DotCfg::new("dotcfg_native_test").native();
+    let expected = root.join("dotcfg_native_test");
+    assert_eq!(cfg.dir().unwrap(), expected);
+    assert_eq!(
+        cfg.file_path().unwrap(),
+        expected.join(format!("config.{DEFAULT_EXT}"))
+    );
+}
+
 /// Custom dir is exactly what the user passes, so the test uses a fresh temp
 /// dir to avoid touching real home. We verify `dir()` and `file_path()` point
 /// to that custom dir (app_name is ignored) and that save/load and per-key ops
