@@ -115,7 +115,7 @@ let cfg = DotCfg::new("mytool").at_dir("/my/project/.mytool");
 
 // Project discovery walks up from current dir to find .mytool, similar to how git finds .git
 let project: Option<DotCfg> = DotCfg::new("mytool").yaml().find_in_ancestors()?;
-// checks .mytool/config.yaml in current dir, then parents, returns Some with Custom dir or None
+// checks .mytool/config.yaml, then config.yml, in current dir and each parent
 // nearest wins, no fallback to home, you decide what to do if None is returned
 
 // Same but from explicit dir (useful for tests)
@@ -134,6 +134,7 @@ let cfg = DotCfg::new("mytool").json();
 // YAML (needs `yaml` feature)
 let cfg = DotCfg::new("mytool").yaml();
 // → ~/.mytool/config.yaml
+// Also reads config.yml when config.yaml is absent; new files use .yaml.
 
 // Custom filename
 let cfg = DotCfg::new("mytool").json().filename("settings");
