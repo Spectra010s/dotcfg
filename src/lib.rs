@@ -118,7 +118,7 @@ pub struct DotCfg {
     app_name: String,
     strategy: DirStrategy,
     format: Format,
-    filename: String,
+    filename: std::ffi::OsString,
     env_prefix: Option<String>,
 }
 
@@ -175,7 +175,7 @@ impl DotCfg {
             format: Format::Json,
             #[cfg(all(feature = "yaml", not(feature = "toml"), not(feature = "json")))]
             format: Format::Yaml,
-            filename: "config".to_string(),
+            filename: "config".into(),
             env_prefix: None,
         }
     }
@@ -255,7 +255,7 @@ impl DotCfg {
             #[cfg(feature = "yaml")]
             Format::Yaml => "yaml",
         };
-        let file_name = format!("{}.{}", self.filename, ext);
+        let file_name = self.filename_with_ext(ext);
         let dot_dir = format!(".{}", self.app_name);
         for ancestor in start.as_ref().ancestors() {
             let dir = ancestor.join(&dot_dir);
@@ -295,9 +295,17 @@ impl DotCfg {
     }
 
     /// Set the config filename (without extension). Default is `"config"`.
-    pub fn filename(mut self, name: impl Into<String>) -> Self {
+    /// Accepts native filesystem names without requiring UTF-8.
+    pub fn filename(mut self, name: impl Into<std::ffi::OsString>) -> Self {
         self.filename = name.into();
         self
+    }
+
+    fn filename_with_ext(&self, ext: &str) -> std::ffi::OsString {
+        let mut name = self.filename.clone();
+        name.push(".");
+        name.push(ext);
+        name
     }
 
     /// Let environment variables override per-key reads.
@@ -374,7 +382,7 @@ impl DotCfg {
             #[cfg(feature = "yaml")]
             Format::Yaml => "yaml",
         };
-        Ok(self.dir()?.join(format!("{}.{}", self.filename, ext)))
+        Ok(self.dir()?.join(self.filename_with_ext(ext)))
     }
 
     /// Returns true if the config file exists
@@ -778,7 +786,7 @@ impl DotCfg {
             #[cfg(feature = "yaml")]
             Format::Yaml => "yaml",
         };
-        let file_name = format!("{}.{}", self.filename, ext);
+        let file_name = self.filename_with_ext(ext);
         let dot_dir = format!(".{}", self.app_name);
         for ancestor in start.as_ref().ancestors() {
             let dir = ancestor.join(&dot_dir);
