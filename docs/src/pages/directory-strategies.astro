@@ -9,10 +9,17 @@ const dotExample = `let cfg = DotCfg::new("mytool");
 let cfg = DotCfg::new("mytool").dot();`;
 const xdgExample = `let cfg = DotCfg::new("mytool").xdg();
 let path = cfg.file_path()?;`;
+const nativeExample = `let cfg = DotCfg::new("mytool").native();
+let path = cfg.file_path()?;`;
 const customExample = `let cfg = DotCfg::new("mytool")
     .at_dir("/my/project/.config");
 
 // /my/project/.config/config.toml`;
+const exactFileExample = `let cfg = DotCfg::new("mytool")
+    .yaml()
+    .at_file("/my/project/settings.yml");
+
+// /my/project/settings.yml`;
 const ancestorExample = `let project = DotCfg::new("mytool")
     .find_in_ancestors()?;
 
@@ -51,11 +58,23 @@ const ancestorFromExample = `let cfg = DotCfg::new("mytool")
       XDG configuration
     </h2>
     <p>
-      Use <code>.xdg()</code> when your application should follow the platform's XDG configuration
-      strategy. dotcfg delegates this resolution to <code>etcetera</code> rather than manually
-      assuming one path on every operating system.
+      Use <code>.xdg()</code> when your application should use XDG configuration paths on every
+      operating system. dotcfg delegates XDG path resolution to <code>etcetera</code>.
     </p>
     <CodeBlock label="Rust" code={xdgExample} />
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      Native platform configuration{' '}
+      <span class="ml-[7px] inline-block rounded-full border border-accent-tint px-[7px] py-[3px] align-middle text-[11px] font-bold tracking-normal text-primary">
+        Since v0.4.0
+      </span>
+    </h2>
+    <p>
+      Use <code>.native()</code> for the operating system's application config directory: XDG on
+      Linux, Application Support on macOS, and Roaming AppData on Windows. The application name and
+      selected config filename are appended there.
+    </p>
+    <CodeBlock label="Rust" code={nativeExample} />
 
     <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
       Custom directory{' '}
@@ -64,7 +83,7 @@ const ancestorFromExample = `let cfg = DotCfg::new("mytool")
       </span>
     </h2>
     <p>
-      <code>.at_dir()</code> bypasses both the dot and XDG strategies. The directory you provide is
+      <code>.at_dir()</code> bypasses the dot, XDG, and native strategies. The directory you provide is
       used exactly as the config directory; dotcfg only appends the configured filename and
       extension.
     </p>
@@ -76,6 +95,27 @@ const ancestorFromExample = `let cfg = DotCfg::new("mytool")
         directory.
       </p>
     </Callout>
+
+    <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
+      Exact file path{' '}
+      <span class="ml-[7px] inline-block rounded-full border border-accent-tint px-[7px] py-[3px] align-middle text-[11px] font-bold tracking-normal text-primary">
+        Since v0.4.0
+      </span>
+    </h2>
+    <p>
+      Use <code>.at_file()</code> when you already have a file path, such as one passed through a
+      CLI flag. dotcfg reads and writes that path exactly, including its extension. The format
+      builder still chooses the parser, so <code>.yaml()</code> can read a <code>.yml</code> file.
+      <code>.at_dir()</code> instead takes a directory and appends the usual filename and extension.
+    </p>
+    <CodeBlock label="Rust" code={exactFileExample} />
+    <p>
+      The last path choice wins: calling <code>.at_dir()</code>, <code>.dot()</code>,{' '}
+      <code>.xdg()</code>, or <code>.native()</code> after <code>.at_file()</code> switches back to a
+      derived path. <code>.filename()</code> is ignored while an exact file path is selected.
+      <code>.delete_dir()</code> is unavailable for an exact file path; use{' '}
+      <code>.delete_file()</code> to remove that file.
+    </p>
 
     <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
       Discover a project config{' '}
@@ -117,13 +157,25 @@ const ancestorFromExample = `let cfg = DotCfg::new("mytool")
       <div class="rounded-[9px] border border-border bg-card p-4">
         <strong class="mb-[7px] block w-max">XDG</strong>
         <p class="m-0 text-sm text-muted-foreground">
-          Applications that should follow platform config conventions.
+          Applications that want XDG paths on every platform.
+        </p>
+      </div>
+      <div class="rounded-[9px] border border-border bg-card p-4">
+        <strong class="mb-[7px] block w-max">Native</strong>
+        <p class="m-0 text-sm text-muted-foreground">
+          Applications that use each operating system's config location.
         </p>
       </div>
       <div class="rounded-[9px] border border-border bg-card p-4">
         <strong class="mb-[7px] block w-max">Custom</strong>
         <p class="m-0 text-sm text-muted-foreground">
           Tests, portable setups, or a known project directory.
+        </p>
+      </div>
+      <div class="rounded-[9px] border border-border bg-card p-4">
+        <strong class="mb-[7px] block w-max">Exact file</strong>
+        <p class="m-0 text-sm text-muted-foreground">
+          A config file path supplied by the user or another part of your program.
         </p>
       </div>
       <div class="rounded-[9px] border border-border bg-card p-4">

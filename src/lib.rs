@@ -78,6 +78,8 @@ pub enum DirStrategy {
     Dot,
     /// `~/.config/toolname/` — XDG standard
     Xdg,
+    /// The operating system's native application config directory
+    Native,
     /// Custom directory path
     Custom(PathBuf),
 }
@@ -117,8 +119,9 @@ pub enum Format {
 pub struct DotCfg {
     app_name: String,
     strategy: DirStrategy,
+    file_override: Option<PathBuf>,
     format: Format,
-    filename: String,
+    filename: std::ffi::OsString,
     env_prefix: Option<String>,
 }
 
@@ -169,13 +172,14 @@ impl DotCfg {
         Self {
             app_name: app_name.into(),
             strategy: DirStrategy::Dot,
+            file_override: None,
             #[cfg(feature = "toml")]
             format: Format::Toml,
             #[cfg(all(feature = "json", not(feature = "toml")))]
             format: Format::Json,
             #[cfg(all(feature = "yaml", not(feature = "toml"), not(feature = "json")))]
             format: Format::Yaml,
-            filename: "config".to_string(),
+            filename: "config".into(),
             env_prefix: None,
         }
     }
@@ -183,18 +187,30 @@ impl DotCfg {
     /// Use `~/.config/toolname/` (XDG)
     pub fn xdg(mut self) -> Self {
         self.strategy = DirStrategy::Xdg;
+        self.file_override = None;
+        self
+    }
+
+    /// Use the platform's native application config directory.
+    ///
+    /// Uses XDG config on Linux, Application Support on macOS, and Roaming
+    /// AppData on Windows, with the app name appended in each case.
+    pub fn native(mut self) -> Self {
+        self.strategy = DirStrategy::Native;
+        self.file_override = None;
         self
     }
 
     /// Use `~/.toolname/` (default)
     pub fn dot(mut self) -> Self {
         self.strategy = DirStrategy::Dot;
+        self.file_override = None;
         self
     }
 
     /// Use a custom directory path.
     ///
-    /// Bypasses both `Dot` and `Xdg` resolution. The config file lives directly
+    /// Bypasses `Dot`, `Xdg`, and `Native` resolution. The config file lives directly
     /// under the directory you pass, exactly as given. It can be any path you
     /// choose, like a temp dir, a project dir, a portable dir, or even a home
     /// dir if you want. No prefix is enforced, so `".mytool"` and `"my-config"`
@@ -210,6 +226,27 @@ impl DotCfg {
     /// ```
     pub fn at_dir(mut self, path: impl Into<PathBuf>) -> Self {
         self.strategy = DirStrategy::Custom(path.into());
+        self.file_override = None;
+        self
+    }
+
+    /// Use an exact config file path, regardless of its name or extension.
+    /// The selected format still determines how the file is parsed and written.
+    ///
+    /// This replaces the directory strategy. A later [`Self::at_dir`],
+    /// [`Self::dot`], [`Self::xdg`], or [`Self::native`] switches back to a
+    /// derived path. [`Self::filename`] has no effect while an exact path is
+    /// selected. Ancestor search still looks for the usual project config.
+    ///
+    /// ```rust,no_run
+    /// # use dotcfg::DotCfg;
+    /// # #[cfg(feature = "yaml")]
+    /// let cfg = DotCfg::new("mytool").yaml().at_file("/tmp/settings.yml");
+    /// # #[cfg(feature = "yaml")]
+    /// assert_eq!(cfg.file_path().unwrap(), std::path::PathBuf::from("/tmp/settings.yml"));
+    /// ```
+    pub fn at_file(mut self, path: impl Into<PathBuf>) -> Self {
+        self.file_override = Some(path.into());
         self
     }
 
@@ -247,23 +284,18 @@ impl DotCfg {
     /// let cfg = DotCfg::new("mytool").find_in_ancestors_from("/tmp/my/project/src").unwrap();
     /// ```
     pub fn find_in_ancestors_from(self, start: impl AsRef<Path>) -> Result<Option<Self>, Error> {
-        let ext = match &self.format {
-            #[cfg(feature = "toml")]
-            Format::Toml => "toml",
-            #[cfg(feature = "json")]
-            Format::Json => "json",
-            #[cfg(feature = "yaml")]
-            Format::Yaml => "yaml",
-        };
-        let file_name = format!("{}.{}", self.filename, ext);
+        let (canonical, alternative) = self.candidate_file_names();
         let dot_dir = format!(".{}", self.app_name);
         for ancestor in start.as_ref().ancestors() {
             let dir = ancestor.join(&dot_dir);
-            let file = dir.join(&file_name);
-            if file.is_file() {
+            if std::iter::once(&canonical)
+                .chain(alternative.as_ref())
+                .any(|name| dir.join(name).is_file())
+            {
                 return Ok(Some(Self {
                     app_name: self.app_name,
                     strategy: DirStrategy::Custom(dir),
+                    file_override: None,
                     format: self.format,
                     filename: self.filename,
                     env_prefix: self.env_prefix,
@@ -295,9 +327,37 @@ impl DotCfg {
     }
 
     /// Set the config filename (without extension). Default is `"config"`.
-    pub fn filename(mut self, name: impl Into<String>) -> Self {
+    /// Accepts native filesystem names without requiring UTF-8.
+    pub fn filename(mut self, name: impl Into<std::ffi::OsString>) -> Self {
         self.filename = name.into();
         self
+    }
+
+    fn filename_with_ext(&self, ext: &str) -> std::ffi::OsString {
+        let mut name = self.filename.clone();
+        name.push(".");
+        name.push(ext);
+        name
+    }
+
+    fn candidate_file_names(&self) -> (std::ffi::OsString, Option<std::ffi::OsString>) {
+        let ext = match self.format {
+            #[cfg(feature = "toml")]
+            Format::Toml => "toml",
+            #[cfg(feature = "json")]
+            Format::Json => "json",
+            #[cfg(feature = "yaml")]
+            Format::Yaml => "yaml",
+        };
+        #[cfg(feature = "yaml")]
+        let alternative = if matches!(self.format, Format::Yaml) {
+            Some(self.filename_with_ext("yml"))
+        } else {
+            None
+        };
+        #[cfg(not(feature = "yaml"))]
+        let alternative = None;
+        (self.filename_with_ext(ext), alternative)
     }
 
     /// Let environment variables override per-key reads.
@@ -342,6 +402,14 @@ impl DotCfg {
 
     /// Returns the config directory path
     pub fn dir(&self) -> Result<PathBuf, Error> {
+        if let Some(path) = &self.file_override {
+            let parent = path.parent().unwrap_or_else(|| Path::new("."));
+            return Ok(if parent.as_os_str().is_empty() {
+                PathBuf::from(".")
+            } else {
+                parent.to_path_buf()
+            });
+        }
         let dir = match &self.strategy {
             DirStrategy::Dot => {
                 // ~/.toolname/ — Unix convention, we resolve manually
@@ -349,7 +417,7 @@ impl DotCfg {
                 home.join(format!(".{}", self.app_name))
             }
             DirStrategy::Xdg => {
-                // Uses etcetera — handles Linux (XDG), macOS, Windows correctly
+                // Explicit XDG layout, regardless of the operating system.
                 use etcetera::app_strategy::{AppStrategy, AppStrategyArgs, Xdg};
                 let strategy = Xdg::new(AppStrategyArgs {
                     top_level_domain: "".to_string(),
@@ -359,22 +427,43 @@ impl DotCfg {
                 .map_err(|_| Error::NoHomeDir)?;
                 strategy.config_dir()
             }
+            DirStrategy::Native => {
+                use etcetera::base_strategy::{BaseStrategy, choose_native_strategy};
+
+                let strategy = choose_native_strategy().map_err(|_| Error::NoHomeDir)?;
+                // Etcetera classifies macOS Application Support as data, while
+                // native application configuration convention uses that path.
+                #[cfg(any(target_os = "macos", target_os = "ios"))]
+                let base = strategy.data_dir();
+                #[cfg(not(any(target_os = "macos", target_os = "ios")))]
+                let base = strategy.config_dir();
+                base.join(&self.app_name)
+            }
             DirStrategy::Custom(path) => path.clone(),
         };
         Ok(dir)
     }
 
-    /// Returns the full config file path
+    /// Returns the full config file path.
+    ///
+    /// For YAML, an existing `.yaml` file takes precedence over `.yml`.
+    /// If neither exists, returns the canonical `.yaml` path for new writes.
     pub fn file_path(&self) -> Result<PathBuf, Error> {
-        let ext = match self.format {
-            #[cfg(feature = "toml")]
-            Format::Toml => "toml",
-            #[cfg(feature = "json")]
-            Format::Json => "json",
-            #[cfg(feature = "yaml")]
-            Format::Yaml => "yaml",
-        };
-        Ok(self.dir()?.join(format!("{}.{}", self.filename, ext)))
+        if let Some(path) = &self.file_override {
+            return Ok(path.clone());
+        }
+        let dir = self.dir()?;
+        let (canonical_name, alternative_name) = self.candidate_file_names();
+        let canonical = dir.join(canonical_name);
+        if !canonical.is_file() {
+            if let Some(alternative_name) = alternative_name {
+                let alternative = dir.join(alternative_name);
+                if alternative.is_file() {
+                    return Ok(alternative);
+                }
+            }
+        }
+        Ok(canonical)
     }
 
     /// Returns true if the config file exists
@@ -612,6 +701,12 @@ impl DotCfg {
 
     /// Delete the entire config directory and all its contents.
     pub fn delete_dir(&self) -> Result<(), Error> {
+        if self.file_override.is_some() {
+            return Err(Error::Io(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "delete_dir is unavailable for an exact file path",
+            )));
+        }
         let dir = self.dir()?;
         if dir.exists() {
             fs::remove_dir_all(dir)?;
@@ -770,32 +865,27 @@ impl DotCfg {
         self,
         start: impl AsRef<Path>,
     ) -> Result<Option<Self>, Error> {
-        let ext = match &self.format {
-            #[cfg(feature = "toml")]
-            Format::Toml => "toml",
-            #[cfg(feature = "json")]
-            Format::Json => "json",
-            #[cfg(feature = "yaml")]
-            Format::Yaml => "yaml",
-        };
-        let file_name = format!("{}.{}", self.filename, ext);
+        let (canonical, alternative) = self.candidate_file_names();
         let dot_dir = format!(".{}", self.app_name);
         for ancestor in start.as_ref().ancestors() {
             let dir = ancestor.join(&dot_dir);
-            let file = dir.join(&file_name);
-            match tokio::fs::metadata(&file).await {
-                Ok(metadata) if metadata.is_file() => {
-                    return Ok(Some(Self {
-                        app_name: self.app_name,
-                        strategy: DirStrategy::Custom(dir),
-                        format: self.format,
-                        filename: self.filename,
-                        env_prefix: self.env_prefix,
-                    }));
+            for name in std::iter::once(&canonical).chain(alternative.as_ref()) {
+                let file = dir.join(name);
+                match tokio::fs::metadata(&file).await {
+                    Ok(metadata) if metadata.is_file() => {
+                        return Ok(Some(Self {
+                            app_name: self.app_name,
+                            strategy: DirStrategy::Custom(dir),
+                            file_override: None,
+                            format: self.format,
+                            filename: self.filename,
+                            env_prefix: self.env_prefix,
+                        }));
+                    }
+                    Ok(_) => {}
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                    Err(error) => return Err(Error::Io(error)),
                 }
-                Ok(_) => {}
-                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-                Err(error) => return Err(Error::Io(error)),
             }
         }
         Ok(None)
@@ -820,6 +910,12 @@ impl DotCfg {
     /// Delete the config directory and its contents asynchronously.
     #[cfg(feature = "async")]
     pub async fn delete_dir_async(&self) -> Result<(), Error> {
+        if self.file_override.is_some() {
+            return Err(Error::Io(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "delete_dir is unavailable for an exact file path",
+            )));
+        }
         let dir = self.dir()?;
         if tokio::fs::try_exists(&dir).await? {
             tokio::fs::remove_dir_all(dir).await?;

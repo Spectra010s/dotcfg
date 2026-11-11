@@ -31,6 +31,7 @@ Most config crates either lock you into a fixed directory strategy or only handl
 | :------------------------------------------ | :-------------------------------------: | :------------------------------------: |
 | **Dot-dir support (`~/.app/`)**             |           ✅ Built-in default           |          ❌ (XDG/Native only)          |
 | **XDG directory (`~/.config/app/`)**        |             ✅ via `.xdg()`             |                   ✅                   |
+| **Native platform config directory**        |            ✅ via `.native()`           |                   ✅                   |
 | **Custom directory (`at_dir`)**             |      ✅ any path, exactly as given      |                   ❌                   |
 | **Project discovery (`find_in_ancestors`)** | ✅ walks from current dir, nearest wins |                   ❌                   |
 | **Ad-hoc key get/set by string path**       |       ✅ (`cfg.get("user.name")`)       |         ❌ (Full struct only)          |
@@ -43,16 +44,16 @@ Most config crates either lock you into a fixed directory strategy or only handl
 
 ```toml
 # TOML only (default)
-dotcfg = "0.3"
+dotcfg = "0.4.0"
 
 # JSON only
-dotcfg = { version = "0.3", default-features = false, features = ["json"] }
+dotcfg = { version = "0.4.0", default-features = false, features = ["json"] }
 
 # YAML only
-dotcfg = { version = "0.3", default-features = false, features = ["yaml"] }
+dotcfg = { version = "0.4.0", default-features = false, features = ["yaml"] }
 
 # All three
-dotcfg = { version = "0.3", features = ["json", "yaml"] }
+dotcfg = { version = "0.4.0", features = ["json", "yaml"] }
 ```
 
 ## Quick Start
@@ -98,6 +99,9 @@ let cfg = DotCfg::new("mytool");
 // ~/.config/mytool/config.toml  (XDG standard, cross-platform)
 let cfg = DotCfg::new("mytool").xdg();
 
+// Platform-native config directory (XDG, macOS Application Support, or Windows Roaming AppData)
+let cfg = DotCfg::new("mytool").native();
+
 // explicit dot (same as default)
 let cfg = DotCfg::new("mytool").dot();
 
@@ -111,7 +115,7 @@ let cfg = DotCfg::new("mytool").at_dir("/my/project/.mytool");
 
 // Project discovery walks up from current dir to find .mytool, similar to how git finds .git
 let project: Option<DotCfg> = DotCfg::new("mytool").yaml().find_in_ancestors()?;
-// checks .mytool/config.yaml in current dir, then parents, returns Some with Custom dir or None
+// checks .mytool/config.yaml, then config.yml, in current dir and each parent
 // nearest wins, no fallback to home, you decide what to do if None is returned
 
 // Same but from explicit dir (useful for tests)
@@ -130,6 +134,7 @@ let cfg = DotCfg::new("mytool").json();
 // YAML (needs `yaml` feature)
 let cfg = DotCfg::new("mytool").yaml();
 // → ~/.mytool/config.yaml
+// Also reads config.yml when config.yaml is absent; new files use .yaml.
 
 // Custom filename
 let cfg = DotCfg::new("mytool").json().filename("settings");
