@@ -1,0 +1,15 @@
+{
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "dotcfg.pxxl.click"
+        }
+      ],
+      "destination": "https://dotcfg.spectra010s.com/:path*",
+      "permanent": true
+    }
+  ]
+}
