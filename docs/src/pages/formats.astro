@@ -50,6 +50,11 @@ import Callout from '../components/Callout.astro';
       label="Rust"
       code={'let cfg = DotCfg::new("mytool").yaml();\n// ~/.mytool/config.yaml'}
     />
+    <p>
+      dotcfg also reads <code>config.yml</code> when <code>config.yaml</code> is absent. If both
+      exist, <code>.yaml</code> takes precedence. A new config is written as <code>.yaml</code>;
+      an existing <code>.yml</code> file is updated in place.
+    </p>
 
     <h2 class="mb-0 mt-12 text-[26px] leading-[1.15] tracking-[-0.025em] max-[760px]:text-2xl">
       Enable several formats

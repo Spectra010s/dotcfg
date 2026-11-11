@@ -258,20 +258,14 @@ impl DotCfg {
     /// let cfg = DotCfg::new("mytool").find_in_ancestors_from("/tmp/my/project/src").unwrap();
     /// ```
     pub fn find_in_ancestors_from(self, start: impl AsRef<Path>) -> Result<Option<Self>, Error> {
-        let ext = match &self.format {
-            #[cfg(feature = "toml")]
-            Format::Toml => "toml",
-            #[cfg(feature = "json")]
-            Format::Json => "json",
-            #[cfg(feature = "yaml")]
-            Format::Yaml => "yaml",
-        };
-        let file_name = self.filename_with_ext(ext);
+        let (canonical, alternative) = self.candidate_file_names();
         let dot_dir = format!(".{}", self.app_name);
         for ancestor in start.as_ref().ancestors() {
             let dir = ancestor.join(&dot_dir);
-            let file = dir.join(&file_name);
-            if file.is_file() {
+            if std::iter::once(&canonical)
+                .chain(alternative.as_ref())
+                .any(|name| dir.join(name).is_file())
+            {
                 return Ok(Some(Self {
                     app_name: self.app_name,
                     strategy: DirStrategy::Custom(dir),
@@ -317,6 +311,26 @@ impl DotCfg {
         name.push(".");
         name.push(ext);
         name
+    }
+
+    fn candidate_file_names(&self) -> (std::ffi::OsString, Option<std::ffi::OsString>) {
+        let ext = match self.format {
+            #[cfg(feature = "toml")]
+            Format::Toml => "toml",
+            #[cfg(feature = "json")]
+            Format::Json => "json",
+            #[cfg(feature = "yaml")]
+            Format::Yaml => "yaml",
+        };
+        #[cfg(feature = "yaml")]
+        let alternative = if matches!(self.format, Format::Yaml) {
+            Some(self.filename_with_ext("yml"))
+        } else {
+            None
+        };
+        #[cfg(not(feature = "yaml"))]
+        let alternative = None;
+        (self.filename_with_ext(ext), alternative)
     }
 
     /// Let environment variables override per-key reads.
@@ -395,17 +409,23 @@ impl DotCfg {
         Ok(dir)
     }
 
-    /// Returns the full config file path
+    /// Returns the full config file path.
+    ///
+    /// For YAML, an existing `.yaml` file takes precedence over `.yml`.
+    /// If neither exists, returns the canonical `.yaml` path for new writes.
     pub fn file_path(&self) -> Result<PathBuf, Error> {
-        let ext = match self.format {
-            #[cfg(feature = "toml")]
-            Format::Toml => "toml",
-            #[cfg(feature = "json")]
-            Format::Json => "json",
-            #[cfg(feature = "yaml")]
-            Format::Yaml => "yaml",
-        };
-        Ok(self.dir()?.join(self.filename_with_ext(ext)))
+        let dir = self.dir()?;
+        let (canonical_name, alternative_name) = self.candidate_file_names();
+        let canonical = dir.join(canonical_name);
+        if !canonical.is_file() {
+            if let Some(alternative_name) = alternative_name {
+                let alternative = dir.join(alternative_name);
+                if alternative.is_file() {
+                    return Ok(alternative);
+                }
+            }
+        }
+        Ok(canonical)
     }
 
     /// Returns true if the config file exists
@@ -801,32 +821,26 @@ impl DotCfg {
         self,
         start: impl AsRef<Path>,
     ) -> Result<Option<Self>, Error> {
-        let ext = match &self.format {
-            #[cfg(feature = "toml")]
-            Format::Toml => "toml",
-            #[cfg(feature = "json")]
-            Format::Json => "json",
-            #[cfg(feature = "yaml")]
-            Format::Yaml => "yaml",
-        };
-        let file_name = self.filename_with_ext(ext);
+        let (canonical, alternative) = self.candidate_file_names();
         let dot_dir = format!(".{}", self.app_name);
         for ancestor in start.as_ref().ancestors() {
             let dir = ancestor.join(&dot_dir);
-            let file = dir.join(&file_name);
-            match tokio::fs::metadata(&file).await {
-                Ok(metadata) if metadata.is_file() => {
-                    return Ok(Some(Self {
-                        app_name: self.app_name,
-                        strategy: DirStrategy::Custom(dir),
-                        format: self.format,
-                        filename: self.filename,
-                        env_prefix: self.env_prefix,
-                    }));
+            for name in std::iter::once(&canonical).chain(alternative.as_ref()) {
+                let file = dir.join(name);
+                match tokio::fs::metadata(&file).await {
+                    Ok(metadata) if metadata.is_file() => {
+                        return Ok(Some(Self {
+                            app_name: self.app_name,
+                            strategy: DirStrategy::Custom(dir),
+                            format: self.format,
+                            filename: self.filename,
+                            env_prefix: self.env_prefix,
+                        }));
+                    }
+                    Ok(_) => {}
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                    Err(error) => return Err(Error::Io(error)),
                 }
-                Ok(_) => {}
-                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-                Err(error) => return Err(Error::Io(error)),
             }
         }
         Ok(None)
