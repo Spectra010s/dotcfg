@@ -163,6 +163,63 @@ fn filename_custom() {
     cfg.delete_dir().unwrap();
 }
 
+/// Native filename bytes must survive path construction and ancestor lookup.
+#[cfg(unix)]
+#[test]
+fn filename_preserves_non_utf8_bytes() {
+    use std::os::unix::ffi::OsStringExt;
+
+    let temp = tempfile::tempdir().unwrap();
+    let app_dir = temp.path().join(".mytool");
+    let start = temp.path().join("nested");
+    std::fs::create_dir_all(&start).unwrap();
+
+    let stem = std::ffi::OsString::from_vec(b"settings-\xff".to_vec());
+    let cfg = DotCfg::new("mytool")
+        .at_dir(&app_dir)
+        .filename(stem.clone());
+    let original = TestConfig {
+        username: "native-name".into(),
+        ..TestConfig::default()
+    };
+    cfg.save(&original).unwrap();
+
+    let mut expected_name = stem.clone();
+    expected_name.push(".");
+    expected_name.push(cfg.file_path().unwrap().extension().unwrap());
+    assert_eq!(cfg.file_path().unwrap(), app_dir.join(expected_name));
+    assert_eq!(cfg.load::<TestConfig>().unwrap(), Some(original));
+
+    let found = DotCfg::new("mytool")
+        .filename(stem)
+        .find_in_ancestors_from(&start)
+        .unwrap()
+        .expect("native filename is found");
+    assert_eq!(found.file_path().unwrap(), cfg.file_path().unwrap());
+}
+
+#[cfg(all(unix, feature = "async"))]
+#[tokio::test]
+async fn async_ancestor_search_preserves_non_utf8_filename() {
+    use std::os::unix::ffi::OsStringExt;
+
+    let temp = tempfile::tempdir().unwrap();
+    let app_dir = temp.path().join(".mytool");
+    let stem = std::ffi::OsString::from_vec(b"settings-\xff".to_vec());
+    let cfg = DotCfg::new("mytool")
+        .at_dir(&app_dir)
+        .filename(stem.clone());
+    cfg.save_async(&TestConfig::default()).await.unwrap();
+
+    let found = DotCfg::new("mytool")
+        .filename(stem)
+        .find_in_ancestors_from_async(temp.path())
+        .await
+        .unwrap()
+        .expect("native filename is found");
+    assert_eq!(found.file_path().unwrap(), cfg.file_path().unwrap());
+}
+
 /// YAML save/load roundtrip — file should be `config.yaml` and deserialize back.
 #[cfg(feature = "yaml")]
 #[test]
